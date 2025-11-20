@@ -1,0 +1,367 @@
+/* ==============================
+      VARIÁVEIS DE TEMA
+================================*/
+
+/* Tema Claro (padrão) */
+:root {
+  --bg-color: #e9ecef;          /* fundo mais cinza claro, menos branco */
+  --text-color: #111;
+  --card-bg: #ffffff;
+  --button-bg: #007bff;
+  --button-text: #fff;
+
+  --bg-overlay: rgba(255,255,255,0.85);
+}
+
+/* Tema Escuro */
+body.dark-mode {
+  --bg-color: #121212;          /* fundo escuro mais agradável */
+  --text-color: #f5f5f5;
+  --card-bg: #1b1b1b;
+
+  --button-bg: #007bff;
+  --button-text: #fff;
+
+  --bg-overlay: rgba(0,0,0,0.65);
+}
+
+/* Aplicação das variáveis */
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background 0.3s, color 0.3s;
+}
+
+
+/* ==========================================
+      FUNDO GLOBAL — restaurado corretamente
+===========================================*/
+body.login-page,
+body.news-page,
+body.home-page {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+
+  background: 
+    linear-gradient(var(--bg-overlay), var(--bg-overlay)),
+    url('/img/background.png') center center / cover no-repeat fixed;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background 0.3s;
+}
+
+/* ==========================================
+      CONTAINERS
+===========================================*/
+.site-wrap,
+.login-wrap {
+  background: var(--card-bg);
+  border-radius: 14px;
+  width: 95%;
+  max-width: 1200px;
+  padding: 25px 30px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+  transition: background 0.3s;
+}
+
+/* ==========================================
+      TÍTULOS
+===========================================*/
+.login-wrap h2,
+.site-wrap h2 {
+  color: #007bff;
+  font-weight: 800;
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+
+/* ==========================================
+      INPUTS
+===========================================*/
+.login-wrap input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s;
+  background: var(--card-bg);
+  color: var(--text-color);
+}
+
+.login-wrap input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 6px rgba(0,123,255,0.3);
+}
+
+/* ==========================================
+      BOTÕES — alinhamento e tamanho fixo
+===========================================*/
+
+button,
+.btn,
+.btn-primary,
+.btn-login,
+.social-btn,
+.btn-logout {
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  color: var(--button-text);
+  background: var(--button-bg);
+  transition: all 0.2s;
+}
+
+/* Hover universal */
+button:hover,
+.btn:hover,
+.btn-primary:hover,
+.btn-login:hover,
+.social-btn:hover,
+.btn-logout:hover {
+  filter: brightness(0.9);
+  transform: translateY(-2px);
+}
+
+/* Botões específicos */
+.btn-login { background: #007bff; }
+.btn-logout { background: #db4437; }
+
+.social-btn.google { background: #db4437; }
+.social-btn.github { background: #333; }
+
+/* ==========================================
+      SOCIAL LOGIN
+===========================================*/
+.social-login {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ==========================================
+      REGISTRO
+===========================================*/
+.register-text {
+  font-size: 14px;
+  color: var(--text-color);
+}
+
+.register-text a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* ==========================================
+      GRID DE NOTÍCIAS
+===========================================*/
+.news-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+  gap: 24px; 
+  margin-bottom: 25px; 
+}
+
+.card { 
+  background: var(--card-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
+  cursor: pointer;
+}
+
+.card:hover { 
+  transform: translateY(-5px); 
+  box-shadow: 0 10px 28px rgba(0,0,0,0.2); 
+}
+
+.card__media img { 
+  width: 100%; 
+  height: 220px; 
+  object-fit: cover; 
+  transition: transform 0.4s; 
+}
+
+.card__media img:hover { transform: scale(1.08); }
+
+.card__content { 
+  padding: 18px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 10px; 
+}
+
+.card__title a { 
+  text-decoration: none; 
+  color: #007bff; 
+  font-weight: 700; 
+  font-size: 18px; 
+}
+
+.card__desc { 
+  color: var(--text-color); 
+  font-size: 15px; 
+  line-height: 1.4; 
+}
+
+.card__read { 
+  background: #007bff; 
+  color: #fff; 
+  font-weight: 600; 
+  text-decoration: none; 
+  padding: 6px 12px; 
+  border-radius: 6px; 
+  display: inline-block; 
+  text-align: center; 
+}
+
+/* ==========================================
+      RESPONSIVIDADE
+===========================================*/
+@media (max-width: 768px) {
+  .login-wrap { margin: 40px 15px; padding: 30px 25px; }
+  .card__media img { height: 200px; }
+  .card--featured { grid-column: span 1; }
+}
+
+@media (max-width: 480px) {
+  .login-wrap { margin: 40px 15px; padding: 25px 20px; }
+  .card__media img { height: 180px; }
+  .card__title a { font-size: 16px; }
+  .card__desc { font-size: 14px; }
+}
+
+/* ===== PADRÃO FORM ===== */
+
+.form-container, .login-wrap {
+  background: var(--box-bg);
+  padding: 25px;
+  width: 360px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px var(--shadow);
+  text-align: center;
+  margin: auto;
+}
+
+.form-container h2,
+.login-wrap h2 {
+  margin-bottom: 22px;
+  color: var(--brand-color);
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+
+/* Inputs */
+.form-container input,
+.login-wrap input {
+  width: 100%;
+  height: 44px;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 15px;
+}
+
+/* Botões principais */
+.btn-primary {
+  width: 100%;
+  height: 44px;
+  background: var(--brand-color);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+/* Botões secundários */
+.btn-secondary {
+  display: block;
+  width: 100%;
+  height: 44px;
+  background: #777;
+  color: white;
+  text-align: center;
+  line-height: 44px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+/* Link esquerdo */
+.forgot {
+  text-align: right;
+  width: 100%;
+  margin-top: -4px;
+  margin-bottom: 12px;
+}
+
+/* Social login */
+.social-login {
+  margin-top: 15px;
+}
+
+.social-btn {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+  margin-top: 10px;
+  line-height: 44px;
+  font-weight: bold;
+  text-align: center;
+  color: #fff;
+}
+
+/* Cores sociais */
+.social-btn.google { background: #db4437; }
+.social-btn.github { background: #333; }
+
+/* Texto final */
+.register-text {
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.forgot a {
+  color: var(--brand-color) !important;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.forgot a:hover {
+  text-decoration: underline;
+}
+
+.forgot {
+  text-align: right !important;
+  margin: 6px 0 12px 0 !important;
+}

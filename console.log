@@ -1,0 +1,23 @@
+app.get('/', checkAuth, async (req, res) => {
+  try {
+    const apiKey = process.env.NEWS_API_KEY;
+    console.log("Chave da News API:", apiKey); // ✅ Verificar se está carregando
+
+    const response = await axios.get(
+      `https://newsapi.org/v2/top-headlines?country=br&apiKey=${apiKey}`
+    );
+
+    const news = response.data.articles.map(a => ({
+      title: a.title,
+      description: a.description || a.content,
+      url: a.url,
+      urlToImage: a.urlToImage,
+      source: a.source.name
+    }));
+
+    res.render('index', { user: req.user, news });
+  } catch (err) {
+    console.error("Erro API:", err.message);
+    res.render('index', { user: req.user, news: [] });
+  }
+});
