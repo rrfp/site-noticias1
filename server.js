@@ -35,7 +35,10 @@ mongoose.connect(process.env.MONGO_URI, {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'https://site-noticias1.onrender.com',
+  credentials: true
+}));
 
 
 
@@ -193,6 +196,10 @@ app.post('/register', async (req, res) => {
 // -----------------------------
 // 🔑 RECUPERAÇÃO DE SENHA — SOLICITAR
 // -----------------------------
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password'); // renderiza views/forgot-password.ejs
+});
+
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
