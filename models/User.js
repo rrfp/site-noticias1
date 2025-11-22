@@ -1,19 +1,21 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+import mongoose from "mongoose";
 
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String },
-  name: { type: String },
+const userSchema = new mongoose.Schema({
+    username: { type: String },
+    email: { type: String, required: true, unique: true },
+    password: { type: String },
 
-  // Login social
-  googleId: { type: String },
-  githubId: { type: String },
+    // Para login social
+    googleId: { type: String },
+    githubId: { type: String },
 
-  // Recuperação de senha
-  resetToken: { type: String, default: null },
-  resetTokenExpires: { type: Date, default: null }
+    // MFA
+    mfaEnabled: { type: Boolean, default: false },
+    mfaSecret: { type: String, default: "" },
+
+    createdAt: { type: Date, default: Date.now }
 });
 
-// Exporta o modelo User
-module.exports = mongoose.model("User", UserSchema);
+// Export default CORRETO
+const User = mongoose.model("User", userSchema);
+export default User;

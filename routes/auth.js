@@ -1,58 +1,88 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import passport from "passport";
-import User from "../models/User.js";  // ajuste o caminho se necessário
+import User from "../models/User.js";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
+import speakeasy from "speakeasy";
+import QRCode from "qrcode";
 
 const router = express.Router();
 
-/* ------------------ LOGIN SOCIAL ------------------ */
+/* ----------------------------------------------------
+   🔹 Middleware
+---------------------------------------------------- */
+function requireLogin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: "Não autenticado" });
+  next();
+}
 
-// Passport Google
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    // Buscar ou criar usuário
-    let user = await User.findOne({ googleId: profile.id });
-    if (!user) {
-      user = await User.create({
-        name: profile.displayName,
-        email: profile.emails[0].value,
-        googleId: profile.id
-      });
-    }
-    return done(null, user);
-  } catch (err) {
-    return done(err, null);
-  }
-}));
+/* ----------------------------------------------------
+   🔹 STRATEGIES (SEGURAS)
+---------------------------------------------------- */
 
-// Passport GitHub
-passport.use(new GitHubStrategy({
-  clientID: process.env.GITHUB_CLIENT_ID,
-  clientSecret: process.env.GITHUB_CLIENT_SECRET,
-  callbackURL: process.env.GITHUB_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = await User.findOne({ githubId: profile.id });
-    if (!user) {
-      user = await User.create({
-        name: profile.displayName || profile.username,
-        email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
-        githubId: profile.id
-      });
-    }
-    return done(null, user);
-  } catch (err) {
-    return done(err, null);
-  }
-}));
+// GOOGLE
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          let user = await User.findOne({ googleId: profile.id });
+          if (!user) {
+            user = await User.create({
+              name: profile.displayName,
+              email: profile.emails[0].value,
+              googleId: profile.id,
+            });
+          }
+          return done(null, user);
+        } catch (err) {
+          return done(err, null);
+        }
+      }
+    )
+  );
+}
 
-// Serialização
+// GITHUB
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  passport.use(
+    new GitHubStrategy(
+      {
+        clientID: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        callbackURL: process.env.GITHUB_CALLBACK_URL,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          let user = await User.findOne({ githubId: profile.id });
+          if (!user) {
+            user = await User.create({
+              name: profile.displayName || profile.username,
+              email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
+              githubId: profile.id,
+            });
+          }
+          return done(null, user);
+        } catch (err) {
+          return done(err, null);
+        }
+      }
+    )
+  );
+}
+
+/* ----------------------------------------------------
+   🔹 SESSION
+---------------------------------------------------- */
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
@@ -63,89 +93,153 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// --- Rotas Google ---
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-router.get('/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  (req, res) => { res.redirect('/'); }
+/* ----------------------------------------------------
+   🔹 ROTAS SOCIAIS
+---------------------------------------------------- */
+router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get(
+  "/google/callback",
+  passport.authenticate("google", { failureRedirect: "/login" }),
+  (req, res) => {
+    if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
+    res.redirect("/");
+  }
 );
 
-// --- Rotas GitHub ---
-router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
-router.get('/github/callback', 
-  passport.authenticate('github', { failureRedirect: '/login' }),
-  (req, res) => { res.redirect('/'); }
+router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
+router.get(
+  "/github/callback",
+  passport.authenticate("github", { failureRedirect: "/login" }),
+  (req, res) => {
+    if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
+    res.redirect("/");
+  }
 );
 
-/* ------------------ RESET PASSWORD EXISTENTE ------------------ */
+/* ----------------------------------------------------
+   🔹 LOGIN NORMAL
+---------------------------------------------------- */
+router.get("/login", (req, res) => {
+  res.render("login", {
+    error: null,
+    message: null,
+    email: "",
+    user: req.user,
+    theme: req.cookies.theme || "light"
+  });
+});
 
-router.get("/reset-password/:token", async (req, res) => {
-  const { token } = req.params;
+router.post("/login", async (req, res, next) => {
+  const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({
-      resetToken: token,
-      resetTokenExpires: { $gt: Date.now() }
-    });
+    const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.render("reset-password", {
-        error: "Token inválido ou expirado.",
-        token: null
-      });
+    if (!user)
+      return res.render("login", { error: "Usuário não encontrado.", email, user: null, theme: req.cookies.theme || "light" });
+
+    if (!user.password)
+      return res.render("login", { error: "Esta conta permite apenas login social.", email, user: null, theme: req.cookies.theme || "light" });
+
+    const passwordOK = await bcrypt.compare(password, user.password);
+    if (!passwordOK)
+      return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
+
+    // Se MFA ativo
+    if (user.mfaEnabled) {
+      req.session.tempUserId = user._id;
+      return res.redirect("/auth/mfa-verify");
     }
 
-    res.render("reset-password", { token });
-  } catch (error) {
-    console.log(error);
-    res.render("reset-password", {
-      error: "Erro ao validar token.",
-      token: null
+    req.login(user, (err) => {
+      if (err) return next(err);
+      if (!user.mfaEnabled) return res.redirect("/auth/mfa/setup");
+      res.redirect("/");
     });
+  } catch (err) {
+    res.render("login", { error: "Erro no login.", email, user: null, theme: req.cookies.theme || "light" });
   }
+});
+
+/* ----------------------------------------------------
+   🔹 MFA
+---------------------------------------------------- */
+router.get("/mfa-verify", (req, res) => {
+  if (!req.session.tempUserId) return res.redirect("/login");
+  res.render("mfa-verify", { error: null, theme: req.cookies.theme || "light" });
+});
+
+router.post("/mfa/login", async (req, res) => {
+  const { token } = req.body;
+  if (!req.session.tempUserId) return res.redirect("/login");
+
+  const user = await User.findById(req.session.tempUserId);
+  if (!user?.mfaEnabled)
+    return res.render("mfa-verify", { error: "MFA não configurado.", theme: req.cookies.theme || "light" });
+
+  const verified = speakeasy.totp.verify({ secret: user.mfaSecret, encoding: "base32", token });
+  if (!verified)
+    return res.render("mfa-verify", { error: "Código MFA inválido.", theme: req.cookies.theme || "light" });
+
+  req.login(user, (err) => {
+    if (err) return res.render("mfa-verify", { error: "Erro ao autenticar.", theme: req.cookies.theme || "light" });
+    delete req.session.tempUserId;
+    res.redirect("/");
+  });
+});
+
+router.get("/mfa/setup", requireLogin, async (req, res) => {
+  try {
+    const secret = speakeasy.generateSecret({ name: "SeuSite - MFA" });
+    const qrCodeImageUrl = await QRCode.toDataURL(secret.otpauth_url);
+    req.session.tempMfaSecret = secret.base32;
+    res.render("mfa-setup", { qrCode: qrCodeImageUrl, error: null, theme: req.cookies.theme || "light" });
+  } catch {
+    res.status(500).render("mfa-setup", { qrCode: null, error: "Erro ao gerar MFA", theme: req.cookies.theme || "light" });
+  }
+});
+
+router.post("/mfa/verify", requireLogin, async (req, res) => {
+  const { token } = req.body;
+  const verified = speakeasy.totp.verify({ secret: req.session.tempMfaSecret, encoding: "base32", token });
+
+  if (!verified)
+    return res.render("mfa-setup", { qrCode: null, error: "Código inválido", theme: req.cookies.theme || "light" });
+
+  const user = await User.findById(req.user.id);
+  user.mfaEnabled = true;
+  user.mfaSecret = req.session.tempMfaSecret;
+  await user.save();
+  delete req.session.tempMfaSecret;
+
+  res.redirect("/");
+});
+
+/* ----------------------------------------------------
+   🔹 RESET PASSWORD
+---------------------------------------------------- */
+router.get("/reset-password/:token", async (req, res) => {
+  const { token } = req.params;
+  const user = await User.findOne({ resetToken: token, resetTokenExpires: { $gt: Date.now() } });
+  if (!user) return res.render("reset-password", { error: "Token inválido ou expirado.", token: null, theme: req.cookies.theme || "light" });
+  res.render("reset-password", { token, theme: req.cookies.theme || "light" });
 });
 
 router.post("/reset-password/:token", async (req, res) => {
   const { token } = req.params;
   const { password, confirmPassword } = req.body;
 
-  if (password !== confirmPassword) {
-    return res.render("reset-password", {
-      error: "As senhas não coincidem.",
-      token
-    });
-  }
+  if (password !== confirmPassword) return res.render("reset-password", { error: "As senhas não coincidem.", token, theme: req.cookies.theme || "light" });
 
-  try {
-    const user = await User.findOne({
-      resetToken: token,
-      resetTokenExpires: { $gt: Date.now() }
-    });
+  const user = await User.findOne({ resetToken: token, resetTokenExpires: { $gt: Date.now() } });
+  if (!user) return res.render("reset-password", { error: "Token inválido ou expirado.", token: null, theme: req.cookies.theme || "light" });
 
-    if (!user) {
-      return res.render("reset-password", {
-        error: "Token inválido ou expirado.",
-        token: null
-      });
-    }
+  user.password = await bcrypt.hash(password, 10);
+  user.resetToken = undefined;
+  user.resetTokenExpires = undefined;
+  await user.save();
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
-    user.resetToken = undefined;
-    user.resetTokenExpires = undefined;
-    await user.save();
-
-    res.render("login", {
-      message: "Senha redefinida com sucesso! Faça login."
-    });
-
-  } catch (error) {
-    console.log(error);
-    res.render("reset-password", {
-      error: "Erro ao atualizar a senha.",
-      token
-    });
-  }
+  res.render("login", { message: "Senha redefinida com sucesso!", error: null, email: user.email, user: null, theme: req.cookies.theme || "light" });
 });
 
 export default router;

@@ -1,122 +1,112 @@
-const LocalStrategy = require('passport-local').Strategy;
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const GitHubStrategy = require('passport-github2').Strategy;
-const bcrypt = require('bcryptjs');
-const User = require('./models/User');
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as GitHubStrategy } from "passport-github2";
+import bcrypt from "bcryptjs";
+import User from "./models/User.js";
 
-module.exports = function(passport) {
+export default function setupPassport() {
 
-  // ---- LOGIN LOCAL ----
-  passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
-    try {
-      const user = await User.findOne({ email });
-      if (!user) return done(null, false, { message: 'Usuário não encontrado' });
+    /* ==============================
+       🔐 LOCAL STRATEGY
+    =============================== */
+    passport.use(
+        new LocalStrategy(
+            { usernameField: "email" },
+            async (email, password, done) => {
+                try {
+                    const user = await User.findOne({ email });
 
-      const match = await bcrypt.compare(password, user.password);
-      if (!match) return done(null, false, { message: 'Senha incorreta' });
+                    if (!user) {
+                        return done(null, false, { message: "Usuário não encontrado" });
+                    }
 
-      return done(null, user);
-    } catch (err) {
-      console.error("Erro login local:", err);
-      return done(err);
-    }
-  }));
+                    const isMatch = await bcrypt.compare(password, user.password);
+                    if (!isMatch) {
+                        return done(null, false, { message: "Senha incorreta" });
+                    }
 
-  // ---- LOGIN GOOGLE ----
-  passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      console.log("Google profile:", profile);
+                    return done(null, user);
+                } catch (error) {
+                    return done(error);
+                }
+            }
+        )
+    );
 
-      const email = (profile.emails && profile.emails.length > 0) 
-        ? profile.emails[0].value 
-        : null;
+    /* ==============================
+       🔐 GOOGLE STRATEGY
+    =============================== */
+    passport.use(
+        new GoogleStrategy(
+            {
+                clientID: process.env.GOOGLE_CLIENT_ID,
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                callbackURL: process.env.GOOGLE_CALLBACK_URL, // MUITO IMPORTANTE
+            },
+            async (accessToken, refreshToken, profile, done) => {
+                try {
+                    let user = await User.findOne({ googleId: profile.id });
 
-      if (!email) {
-        console.error("Google login sem email disponível!");
-        return done(null, false, { message: "Email não disponível no Google" });
-      }
+                    if (!user) {
+                        user = await User.create({
+                            googleId: profile.id,
+                            username: profile.displayName,
+                            email: profile.emails[0].value,
+                        });
+                    }
 
-      let user = await User.findOne({ googleId: profile.id });
-      if (user) return done(null, user);
+                    return done(null, user);
+                } catch (error) {
+                    return done(error);
+                }
+            }
+        )
+    );
 
-      let existingUser = await User.findOne({ email });
-      if (existingUser) {
-        existingUser.googleId = profile.id;
-        await existingUser.save();
-        return done(null, existingUser);
-      }
+    /* ==============================
+       🔐 GITHUB STRATEGY
+    =============================== */
+    passport.use(
+        new GitHubStrategy(
+            {
+                clientID: process.env.GITHUB_CLIENT_ID,
+                clientSecret: process.env.GITHUB_CLIENT_SECRET,
+                callbackURL: process.env.GITHUB_CALLBACK_URL, // MUITO IMPORTANTE
+            },
+            async (accessToken, refreshToken, profile, done) => {
+                try {
+                    let user = await User.findOne({ githubId: profile.id });
 
-      user = new User({
-        googleId: profile.id,
-        name: profile.displayName || email,
-        email
-      });
+                    if (!user) {
+                        user = await User.create({
+                            githubId: profile.id,
+                            username: profile.username,
+                            email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
+                        });
+                    }
 
-      await user.save();
-      return done(null, user);
+                    return done(null, user);
+                } catch (error) {
+                    return done(error);
+                }
+            }
+        )
+    );
 
-    } catch (err) {
-      console.error("Erro estratégia Google:", err);
-      done(err, null);
-    }
-  }));
+    /* ==============================
+       🔐 SESSÕES
+    =============================== */
+    passport.serializeUser((user, done) => {
+        done(null, user.id);
+    });
 
-  // ---- LOGIN GITHUB ----
-  passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: process.env.GITHUB_CALLBACK_URL,
-    scope: ['user:email']
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      console.log("GitHub profile:", profile);
-
-      let email = (profile.emails && profile.emails.length > 0)
-        ? profile.emails[0].value
-        : `${profile.username || profile.id}@users.noreply.github.com`;
-
-      let user = await User.findOne({ githubId: profile.id });
-      if (user) return done(null, user);
-
-      let existingUser = await User.findOne({ email });
-      if (existingUser) {
-        existingUser.githubId = profile.id;
-        await existingUser.save();
-        return done(null, existingUser);
-      }
-
-      user = new User({
-        githubId: profile.id,
-        name: profile.username || profile.displayName || email,
-        email
-      });
-
-      await user.save();
-      return done(null, user);
-
-    } catch (err) {
-      console.error("Erro estratégia GitHub:", err);
-      done(err, null);
-    }
-  }));
-
-  // ---- SERIALIZE / DESERIALIZE ----
-  passport.serializeUser((user, done) => {
-    done(null, user.id);
-  });
-
-  passport.deserializeUser(async (id, done) => {
-    try {
-      const user = await User.findById(id);
-      done(null, user);
-    } catch (err) {
-      done(err, null);
-    }
-  });
-};
+    passport.deserializeUser(async (id, done) => {
+        try {
+            const user = await User.findById(id);
+            done(null, user);
+        } catch (error) {
+            done(error, null);
+        }
+    });
+}
