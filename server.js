@@ -10,7 +10,7 @@ import cors from "cors";
 import MongoStore from "connect-mongo";
 import cookieParser from "cookie-parser";
 import axios from "axios";
-
+import newsRoutes from "./routes/news.js";
 // Rotas de autenticação
 import authRoutes from "./routes/auth.js";
 
@@ -85,6 +85,7 @@ app.use(express.static(path.join(__dirname, "public")));
    🔐 ROTAS DE AUTENTICAÇÃO
 -------------------------------------- */
 app.use("/auth", authRoutes);
+app.use("/news", newsRoutes);
 
 /* --------------------------------------
    🎨 THEME GLOBAL

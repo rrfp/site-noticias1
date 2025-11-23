@@ -1,51 +1,70 @@
-router.post('/set-theme', (req, res) => {
-    const { theme } = req.body;
+import express from "express";
+import News from "../models/News.js";
+import { requireLogin } from "./auth.js"; // seu middleware de autenticação
 
-    if (!['light', 'dark'].includes(theme)) {
-        return res.status(400).json({ message: 'Tema inválido' });
-    }
-
-    // salva o cookie
-    res.cookie('theme', theme, {
-        httpOnly: false, 
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({ message: 'Tema atualizado' });
-});
-
-
-const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 
-const fallbackNews = [
-  { title: "Notícia de teste 1", description: "Descrição da notícia 1", url: "#", urlToImage: null },
-  { title: "Notícia de teste 2", description: "Descrição da notícia 2", url: "#", urlToImage: null }
-];
-
-router.get('/', async (req, res) => {
+// Listar todas notícias
+router.get("/", async (req, res) => {
   try {
-    const apiKey = process.env.NEWS_API_KEY;
-    const response = await axios.get(
-      `https://newsapi.org/v2/everything?q=tecnologia&language=pt&apiKey=${apiKey}`
-    );
-
-    let news = response.data.articles.map(a => ({
-      title: a.title,
-      description: a.description || a.content,
-      url: a.url,
-      urlToImage: a.urlToImage,
-      source: a.source.name
-    }));
-
-    if (!news || news.length === 0) news = fallbackNews;
-
-    res.json(news);
+    const newsList = await News.find().sort({ createdAt: -1 });
+    res.render("news", {
+      newsList,
+      user: req.user,
+      theme: req.cookies.theme || "light"
+    });
   } catch (err) {
-    console.error("Erro ao carregar notícias da API:", err.message);
-    res.json(fallbackNews);
+    res.status(500).send("Erro ao buscar notícias");
   }
 });
 
-module.exports = router;
+// Curtir / descurtir notícia
+router.post("/:id/like", requireLogin, async (req, res) => {
+  try {
+    const news = await News.findById(req.params.id);
+    if (!news) return res.status(404).json({ error: "Notícia não encontrada" });
+
+    const userId = req.user._id;
+
+    if (!news.likes) news.likes = [];
+    if (news.likes.includes(userId)) {
+      news.likes.pull(userId); // descurtir
+    } else {
+      news.likes.push(userId); // curtir
+    }
+
+    await news.save();
+    res.json({ likesCount: news.likes.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao curtir notícia" });
+  }
+});
+
+// Adicionar comentário
+router.post("/:id/comment", requireLogin, async (req, res) => {
+  try {
+    const news = await News.findById(req.params.id);
+    if (!news) return res.status(404).json({ error: "Notícia não encontrada" });
+
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "Comentário vazio" });
+
+    if (!news.comments) news.comments = [];
+    const comment = {
+      userId: req.user._id,
+      username: req.user.name,
+      text,
+      createdAt: new Date()
+    };
+    news.comments.push(comment);
+
+    await news.save();
+    res.json({ comment });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao adicionar comentário" });
+  }
+});
+
+export default router;
