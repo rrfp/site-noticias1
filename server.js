@@ -24,10 +24,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // ----------------------------
+// BASE_URL E MONGO DINÂMICOS
+// ----------------------------
+const IS_DEPLOY = !!process.env.PORT;
+const PORT = process.env.PORT || process.env.LOCAL_PORT || 3000;
+const MONGO_URI = IS_DEPLOY ? process.env.DEPLOY_MONGO_URI : process.env.LOCAL_MONGO_URI;
+const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : process.env.LOCAL_BASE_URL;
+
+// URL para logs (corrige duplicidade da porta)
+const LOG_URL = IS_DEPLOY ? BASE_URL : `${BASE_URL}:${PORT}`;
+
+// ----------------------------
 // MONGODB
 // ----------------------------
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB conectado ✅"))
   .catch((err) => console.log("Erro MongoDB:", err));
 
@@ -37,7 +48,9 @@ mongoose
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:3000", credentials: true }));
+
+// CORS dinâmico
+app.use(cors({ origin: IS_DEPLOY ? BASE_URL : `${BASE_URL}:${PORT}`, credentials: true }));
 
 // ----------------------------
 // SESSÃO
@@ -47,7 +60,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "secretkey",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI, ttl: 14 * 24 * 60 * 60 }),
+    store: MongoStore.create({ mongoUrl: MONGO_URI, ttl: 14 * 24 * 60 * 60 }),
     cookie: { maxAge: 14 * 24 * 60 * 60 * 1000, sameSite: "lax" },
   })
 );
@@ -89,7 +102,6 @@ app.get("/", (req, res) => {
   res.redirect("/home");
 });
 
-// Página home com notícias (autenticado)
 app.get("/home", requireLogin, async (req, res) => {
   const articles = await fetchNews();
   res.render("home", { articles, query: "" });
@@ -140,5 +152,4 @@ app.get("/logout", (req, res) => res.redirect("/auth/logout"));
 // ----------------------------
 // SERVIDOR
 // ----------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando em ${process.env.BASE_URL || "http://localhost"}:${PORT}`));
+app.listen(PORT, () => console.log(`Servidor rodando em ${LOG_URL}`));
