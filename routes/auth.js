@@ -16,8 +16,9 @@ const router = express.Router();
 
 // BASE_URL dinâmica (local ou produção)
 const IS_DEPLOY = !!process.env.PORT;
-const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : process.env.LOCAL_BASE_URL;
-
+const BASE_URL = IS_DEPLOY
+  ? process.env.DEPLOY_BASE_URL
+  : `${process.env.LOCAL_BASE_URL}:${process.env.LOCAL_PORT || 3000}`;
 
 /* -------------------------------
    🔹 Middleware
@@ -77,7 +78,9 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
         try {
           let user = await User.findOne({ githubId: profile.id });
           if (!user) {
-            user = await User.findOne({ email: profile.emails?.[0]?.value || `${profile.username}@github.com` });
+            user = await User.findOne({
+              email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
+            });
             if (user) {
               user.githubId = profile.id;
               await user.save();
@@ -149,10 +152,13 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.render("login", { error: "Usuário não encontrado.", email, user: null, theme: req.cookies.theme || "light" });
-    if (!user.password) return res.render("login", { error: "Esta conta permite apenas login social.", email, user: null, theme: req.cookies.theme || "light" });
+    if (!user)
+      return res.render("login", { error: "Usuário não encontrado.", email, user: null, theme: req.cookies.theme || "light" });
+    if (!user.password)
+      return res.render("login", { error: "Esta conta permite apenas login social.", email, user: null, theme: req.cookies.theme || "light" });
     const passwordOk = await bcrypt.compare(password, user.password);
-    if (!passwordOk) return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
+    if (!passwordOk)
+      return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
     if (user.mfaEnabled) {
       req.session.tempUserId = user._id;
       return res.redirect("/auth/mfa-verify");
@@ -168,6 +174,42 @@ router.post("/login", async (req, res) => {
 });
 
 /* -------------------------------
+   🔹 REGISTRO (AJUSTADO PARA FETCH)
+--------------------------------*/
+router.get("/register", (req, res) => {
+  res.render("register", { error: null, theme: req.cookies.theme || "light" });
+});
+
+router.post("/register", async (req, res) => {
+  const { name, email, password, confirmPassword } = req.body;
+
+  if (!name || !email || !password || !confirmPassword)
+    return res.json({ success: false, message: "Preencha todos os campos." });
+
+  if (password !== confirmPassword)
+    return res.json({ success: false, message: "As senhas não conferem." });
+
+  try {
+    let user = await User.findOne({ email });
+    if (user) return res.json({ success: false, message: "Usuário já existe." });
+
+    const hash = await bcrypt.hash(password, 10);
+    user = await User.create({ name, email, password: hash });
+
+    req.login(user, err => {
+      if (err) {
+        console.error(err);
+        return res.json({ success: false, message: "Erro ao efetuar login." });
+      }
+      return res.json({ success: true, message: "Cadastro realizado com sucesso!" });
+    });
+  } catch (err) {
+    console.error(err);
+    return res.json({ success: false, message: "Erro ao criar usuário." });
+  }
+});
+
+/* -------------------------------
    🔹 REDEFINIÇÃO DE SENHA
 --------------------------------*/
 router.get("/forgot-password", (req, res) => {
@@ -177,7 +219,8 @@ router.get("/forgot-password", (req, res) => {
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
-  if (!user) return res.render("forgot-password", { error: "Usuário não encontrado.", message: null, theme: req.cookies.theme || "light" });
+  if (!user)
+    return res.render("forgot-password", { error: "Usuário não encontrado.", message: null, theme: req.cookies.theme || "light" });
 
   const token = crypto.randomBytes(20).toString("hex");
   user.resetPasswordToken = token;
@@ -252,15 +295,13 @@ router.post("/mfa/login", async (req, res) => {
   });
 });
 
-// GERA QR CODE SOMENTE NA PRIMEIRA VEZ
 router.get("/mfa/setup", requireLogin, async (req, res) => {
   if (!req.user.mfaEnabled) {
     const secret = speakeasy.generateSecret({ name: "SeuSite - MFA" });
     const qrCodeImageUrl = await QRCode.toDataURL(secret.otpauth_url);
     req.session.tempMfaSecret = secret.base32;
     return res.render("mfa-setup", { qrCode: qrCodeImageUrl, error: null, theme: req.cookies.theme || "light" });
-  } 
-  // Usuário já configurou MFA
+  }
   res.redirect("/");
 });
 
@@ -279,14 +320,15 @@ router.post("/mfa/verify", requireLogin, async (req, res) => {
 /* -------------------------------
    🔹 LOGOUT
 --------------------------------*/
-router.get("/logout", (req, res) => {
-  req.logout();
-  req.session.destroy(() => {
-    res.clearCookie("connect.sid");
-    res.redirect("/auth/login");
+router.get("/logout", (req, res, next) => {
+  req.logout(function(err) {
+    if (err) return next(err);
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.redirect("/auth/login");
+    });
   });
 });
-
 
 export default router;
 export { requireLogin };

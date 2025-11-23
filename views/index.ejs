@@ -36,7 +36,7 @@
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 25px;
+      margin-bottom: 15px;
     }
     .topbar__brand {
       display: flex;
@@ -77,6 +77,35 @@
     .btn-logout:hover {
       opacity: 0.9;
       transform: translateY(-2px);
+    }
+
+    /* ===== Faixa de pesquisa branca ===== */
+    .search-bar-wrapper {
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: center;
+    }
+    .search-bar input {
+      width: 60%;
+      max-width: 500px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .search-bar input:focus {
+      border-color: #007bff;
+      box-shadow: 0 0 6px rgba(0,123,255,0.3);
+    }
+    @media (max-width: 768px) {
+      .search-bar input { width: 80%; }
     }
 
     /* ===== Grid de notícias ===== */
@@ -229,6 +258,13 @@
       </div>
     </header>
 
+    <!-- ===== Faixa de pesquisa ===== -->
+    <div class="search-bar-wrapper">
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Pesquise notícias sobre seu interesse...">
+      </div>
+    </div>
+
     <!-- ===== Notícias ===== -->
     <main class="container" id="news-container">
       <div class="loading">Carregando notícias...</div>
@@ -250,6 +286,7 @@
     const ITEMS_PER_PAGE = 20;
     let currentPage = 1;
     let newsData = [];
+    let filteredData = [];
 
     async function loadNews() {
       const container = document.getElementById('news-container');
@@ -258,7 +295,7 @@
       try {
         const res = await fetch('/api/news');
         newsData = await res.json();
-
+        filteredData = newsData; // Inicialmente mostrar todas
         if (!newsData || newsData.length === 0) {
           container.innerHTML = `<div class="empty"><div class="empty__icon">📰</div><p>Não foi possível carregar notícias externas.</p></div>`;
           return;
@@ -278,7 +315,7 @@
 
       const start = (page - 1) * ITEMS_PER_PAGE;
       const end = start + ITEMS_PER_PAGE;
-      const pageItems = newsData.slice(start, end);
+      const pageItems = filteredData.slice(start, end);
 
       const section = document.createElement('section');
       section.className = 'news-grid';
@@ -306,7 +343,7 @@
     function renderPagination() {
       const pagination = document.getElementById('pagination');
       pagination.innerHTML = '';
-      const totalPages = Math.ceil(newsData.length / ITEMS_PER_PAGE);
+      const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
 
       const prevBtn = document.createElement('button');
       prevBtn.innerText = '← Anterior';
@@ -347,6 +384,19 @@
       });
       pagination.appendChild(nextBtn);
     }
+
+    // ===== Pesquisa =====
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      filteredData = newsData.filter(n => 
+        (n.title && n.title.toLowerCase().includes(query)) ||
+        (n.description && n.description.toLowerCase().includes(query))
+      );
+      currentPage = 1;
+      renderPage(currentPage);
+      renderPagination();
+    });
 
     loadNews();
   </script>

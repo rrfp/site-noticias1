@@ -115,6 +115,7 @@
     <input type="text" name="name" id="name" placeholder="Nome" required>
     <input type="email" name="email" id="email" placeholder="E-mail" required>
     <input type="password" name="password" id="password" placeholder="Senha" required>
+    <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirmar Senha" required>
     <button type="submit">Finalizar Cadastro</button>
   </form>
 
@@ -132,12 +133,13 @@
     const name = document.getElementById("name").value;
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
 
     try {
       const res = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, confirmPassword })
       });
       const data = await res.json();
       messageBox.textContent = data.message;
@@ -156,7 +158,11 @@
     const next = current === "dark" ? "light" : "dark";
     html.setAttribute("data-theme", next);
     btn.textContent = next === "dark" ? "🌙" : "☀️";
-    await fetch("/set-theme", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ theme: next }) });
+    await fetch("/set-theme", { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify({ theme: next }) 
+    });
   });
 </script>
 

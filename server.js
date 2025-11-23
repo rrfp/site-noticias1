@@ -28,17 +28,15 @@ const app = express();
 // ----------------------------
 const IS_DEPLOY = !!process.env.PORT;
 const PORT = process.env.PORT || process.env.LOCAL_PORT || 3000;
+const MONGO_URI = IS_DEPLOY ? process.env.DEPLOY_MONGO_URI : process.env.LOCAL_MONGO_URI;
 
-// BASE_URL já inclui a porta no localhost
-const BASE_URL = IS_DEPLOY
-  ? process.env.DEPLOY_BASE_URL
-  : `${process.env.LOCAL_BASE_URL}:${PORT}`;
+// BASE_URL local não deve duplicar a porta
+const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : `${process.env.LOCAL_BASE_URL}:${PORT}`;
+const LOG_URL = `${BASE_URL}`;
 
 // ----------------------------
 // MONGODB
 // ----------------------------
-const MONGO_URI = IS_DEPLOY ? process.env.DEPLOY_MONGO_URI : process.env.LOCAL_MONGO_URI;
-
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB conectado ✅"))
@@ -51,7 +49,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS dinâmico
+// CORS
 app.use(cors({ origin: BASE_URL, credentials: true }));
 
 // ----------------------------
@@ -81,7 +79,7 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ----------------------------
-// THEME + USER GLOBAL
+// VARIÁVEIS GLOBAIS PARA VIEWS
 // ----------------------------
 app.use((req, res, next) => {
   res.locals.theme = req.cookies?.theme || "light";
@@ -145,7 +143,7 @@ app.post("/set-theme", (req, res) => {
 });
 
 // ----------------------------
-// REDIRECIONAMENTOS DE LOGIN E FORGOT
+// REDIRECIONAMENTOS DE LOGIN
 // ----------------------------
 app.get("/login", (req, res) => res.redirect("/auth/login"));
 app.get("/forgot-password", (req, res) => res.redirect("/auth/forgot-password"));
@@ -154,4 +152,4 @@ app.get("/logout", (req, res) => res.redirect("/auth/logout"));
 // ----------------------------
 // SERVIDOR
 // ----------------------------
-app.listen(PORT, () => console.log(`Servidor rodando em ${BASE_URL}`));
+app.listen(PORT, () => console.log(`Servidor rodando em ${LOG_URL}`));
