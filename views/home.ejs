@@ -5,268 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Site Notícias</title>
   <link rel="stylesheet" href="/styles.css">
-
-  <style>
-    /* ======================= */
-    /*      TEMA DARK/LIGHT    */
-    /* ======================= */
-    :root {
-      --bg-page: #ffffff;
-      --text-color: #000;
-      --box-bg: rgba(255,255,255,0.95);
-      --card-bg: #fff;
-      --card-shadow: rgba(0,0,0,0.28);
-      --brand-color: #007bff;
-      --input-bg: #fff;
-      --input-border: #ccc;
-      --logout-bg: #db4437;
-    }
-
-    html[data-theme="dark"] {
-      --bg-page: #0f0f0f;
-      --text-color: #f1f1f1;
-      --box-bg: rgba(20,20,20,0.95);
-      --card-bg: #1a1a1a;
-      --card-shadow: rgba(0,0,0,0.6);
-      --brand-color: #4da3ff;
-      --input-bg: #222;
-      --input-border: #555;
-      --logout-bg: #c62828;
-    }
-
-    /* Body */
-    body.home-page {
-      font-family: 'Segoe UI', Tahoma;
-      margin: 0;
-      min-height: 100vh;
-      background: var(--bg-page);
-      color: var(--text-color);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: 0.3s;
-      padding-bottom: 50px;
-    }
-
-    /* Topbar */
-    .topbar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 20px;
-      background: var(--box-bg);
-      box-shadow: 0 4px 12px var(--card-shadow);
-      margin-bottom: 20px;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-
-    .brand {
-      color: var(--brand-color);
-      margin: 0;
-      font-size: 1.5rem;
-    }
-
-    .topbar__user {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .btn-logout {
-      background: var(--logout-bg);
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: 14px;
-    }
-
-    .btn-logout:hover {
-      opacity: 0.9;
-    }
-
-    .theme-toggle {
-      padding: 6px 12px;
-      background: var(--brand-color);
-      color: #fff;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: 0.2s;
-    }
-
-    .theme-toggle:hover {
-      opacity: 0.85;
-    }
-
-    /* Barra de pesquisa */
-    .search-bar {
-      display: flex;
-      gap: 8px;
-      width: 100%;
-      max-width: 480px;
-      margin-bottom: 30px;
-    }
-
-    .search-bar input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--input-border);
-      background: var(--input-bg);
-      color: var(--text-color);
-    }
-
-    .search-bar button {
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: none;
-      background: var(--brand-color);
-      color: #fff;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .search-bar button:hover {
-      opacity: 0.9;
-    }
-
-    /* Login */
-    .login-wrap {
-      max-width: 360px;
-      margin: 60px auto;
-      padding: 30px;
-      background: var(--box-bg);
-      box-shadow: 0 10px 30px var(--card-shadow);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      text-align: center;
-    }
-
-    .login-wrap h2 {
-      color: var(--brand-color);
-      margin-bottom: 15px;
-    }
-
-    .login-wrap input {
-      width: 100%;
-      height: 44px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--input-border);
-      background: var(--input-bg);
-      color: var(--text-color);
-      font-size: 15px;
-    }
-
-    .login-wrap button {
-      width: 100%;
-      height: 44px;
-      background: var(--brand-color);
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 15px;
-      margin-top: 10px;
-      transition: 0.2s;
-    }
-
-    .login-wrap button:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-
-    .login-wrap a {
-      font-size: 14px;
-      color: var(--brand-color);
-      font-weight: bold;
-    }
-
-    .login-wrap a:hover {
-      text-decoration: underline;
-    }
-
-    .forgot {
-      text-align: right;
-      margin-bottom: 10px;
-    }
-
-    /* Notícias */
-    .news-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      width: 100%;
-      max-width: 1200px;
-      padding: 0 20px;
-    }
-
-    .card {
-      background: var(--card-bg);
-      box-shadow: 0 6px 18px var(--card-shadow);
-      border-radius: 10px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card__media {
-      width: 100%;
-      object-fit: cover;
-      height: 160px;
-    }
-
-    .card__content {
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .card__title a {
-      color: var(--brand-color);
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .card__title a:hover {
-      text-decoration: underline;
-    }
-
-    .card__desc {
-      font-size: 14px;
-      color: var(--text-color);
-    }
-
-    .card__meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      margin-top: 5px;
-    }
-
-    /* Footer */
-    .footer {
-      margin-top: 40px;
-      text-align: center;
-      font-size: 14px;
-      color: var(--text-color);
-      width: 100%;
-      padding: 10px 0;
-    }
-
-  </style>
 </head>
-
 <body class="home-page">
 
   <!-- Topbar -->
@@ -274,83 +13,69 @@
     <h1 class="brand">Notícias</h1>
 
     <div style="display:flex; gap:15px; align-items:center;">
+      <!-- Botão Tema -->
       <button id="toggleTheme" class="theme-toggle">
         Tema: <%= theme === "dark" ? "🌙 Escuro" : "☀️ Claro" %>
       </button>
 
+      <!-- Login / Logout -->
       <% if (user) { %>
         <div class="topbar__user">
           <span class="welcome">Olá, <%= user.name %></span>
-          <a href="/logout" class="btn-logout">Sair</a>
+          <a href="/logout" class="btn btn-logout">Sair</a>
         </div>
+      <% } else { %>
+        <a href="/auth/login" class="btn btn-login">Login</a>
       <% } %>
     </div>
   </div>
-
-  <!-- Barra de pesquisa -->
-  <% if (user) { %>
-    <form class="search-bar" action="/search" method="GET">
-      <input type="text" name="q" placeholder="Pesquisar notícias..." value="<%= query %>">
-      <button type="submit">Buscar</button>
-    </form>
-  <% } %>
-
-  <!-- Login -->
-  <% if (!user) { %>
-    <div class="login-wrap">
-      <h2>Login</h2>
-      <form action="/login" method="POST">
-        <input type="email" name="email" placeholder="Seu e-mail" required>
-        <input type="password" name="password" placeholder="Sua senha" required>
-        <div class="forgot">
-          <a href="/forgot-password">Esqueci minha senha</a>
-        </div>
-        <button type="submit" class="btn-login">Entrar</button>
-      </form>
-
-      <div class="social-login">
-        <a href="/auth/google" class="social-btn google">Login com Google</a>
-        <a href="/auth/github" class="social-btn github">Login com GitHub</a>
-      </div>
-
-      <p class="register-text">Não tem conta? <a href="/register">Cadastre-se</a></p>
-    </div>
-  <% } %>
 
   <!-- Notícias -->
   <% if (user && articles && articles.length > 0) { %>
     <div class="news-grid">
       <% articles.forEach(article => { %>
-        <div class="card">
+        <div class="card" data-id="<%= article._id %>">
           <% if (article.urlToImage) { %>
-            <img class="card__media" src="<%= article.urlToImage %>" alt="">
+            <div class="card__media">
+              <img src="<%= article.urlToImage %>" alt="">
+            </div>
           <% } %>
           <div class="card__content">
             <h3 class="card__title"><a href="<%= article.url %>" target="_blank"><%= article.title %></a></h3>
             <p class="card__desc"><%= article.description %></p>
             <div class="card__meta">
-              <span class="badge"><span class="badge__dot"></span> <%= article.source %></span>
-              <a href="<%= article.url %>" class="card__read" target="_blank">Ler</a>
+              <span class="badge"><%= article.source %></span>
+              <span class="like-btn" data-liked="<%= article.likes.includes(user._id) %>">
+                ❤️ <span class="likes-count"><%= article.likes.length %></span>
+              </span>
+            </div>
+
+            <div class="comment-section">
+              <input type="text" placeholder="Adicionar comentário..." class="comment-input">
+              <button class="comment-btn">Comentar</button>
+              <div class="comments-list">
+                <% article.comments.forEach(c => { %>
+                  <div><strong><%= c.username %>:</strong> <%= c.text %></div>
+                <% }) %>
+              </div>
             </div>
           </div>
         </div>
       <% }) %>
     </div>
+  <% } else if (user && (!articles || articles.length === 0)) { %>
+    <div class="site-wrap">
+      <h2>Nenhuma notícia encontrada</h2>
+    </div>
   <% } %>
 
-  <!-- Footer -->
-  <div class="footer">
-    &copy; <%= new Date().getFullYear() %> Site Notícias.
-  </div>
-
-  <!-- SCRIPT DE TEMA -->
   <script>
+    // Tema
     const btnTheme = document.getElementById("toggleTheme");
     btnTheme.addEventListener("click", async () => {
       const html = document.documentElement;
       const current = html.getAttribute("data-theme");
       const next = current === "dark" ? "light" : "dark";
-
       html.setAttribute("data-theme", next);
       btnTheme.textContent = next === "dark" ? "Tema: 🌙 Escuro" : "Tema: ☀️ Claro";
 
@@ -360,7 +85,47 @@
         body: JSON.stringify({ theme: next })
       });
     });
-  </script>
 
+    // Likes
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const card = btn.closest('.card');
+        const newsId = card.dataset.id;
+        const res = await fetch(`/api/news/${newsId}/like`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          btn.querySelector('.likes-count').textContent = data.likesCount;
+          const liked = btn.getAttribute('data-liked') === 'true';
+          btn.setAttribute('data-liked', !liked);
+        }
+      });
+    });
+
+    // Comentários
+    document.querySelectorAll('.comment-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const card = btn.closest('.card');
+        const newsId = card.dataset.id;
+        const input = card.querySelector('.comment-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const res = await fetch(`/api/news/${newsId}/comment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          const commentsList = card.querySelector('.comments-list');
+          const div = document.createElement('div');
+          div.innerHTML = `<strong>${data.comment.username}:</strong> ${data.comment.text}`;
+          commentsList.appendChild(div);
+          input.value = '';
+        }
+      });
+    });
+  </script>
 </body>
 </html>

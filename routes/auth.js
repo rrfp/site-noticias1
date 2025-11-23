@@ -14,35 +14,43 @@ import nodemailer from "nodemailer";
 
 const router = express.Router();
 
-/* -------------------------------
-   🔹 Middleware
---------------------------------*/
+// ----------------------------
+// MIDDLEWARE
+// ----------------------------
 function requireLogin(req, res, next) {
-  if (!req.user) return res.status(401).json({ error: "Não autenticado" });
+  if (!req.user) return res.redirect("/auth/login");
   next();
 }
 
-/* -------------------------------
-   🔹 STRATEGIES
---------------------------------*/
-// GOOGLE
+// ----------------------------
+// BASE URL (local vs produção)
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+
+// ----------------------------
+// GOOGLE STRATEGY
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(
     new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+        callbackURL: `${BASE_URL}/auth/google/callback`,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
           let user = await User.findOne({ googleId: profile.id });
           if (!user) {
-            user = await User.create({
-              name: profile.displayName,
-              email: profile.emails[0].value,
-              googleId: profile.id,
-            });
+            user = await User.findOne({ email: profile.emails[0].value });
+            if (user) {
+              user.googleId = profile.id;
+              await user.save();
+            } else {
+              user = await User.create({
+                name: profile.displayName,
+                email: profile.emails[0].value,
+                googleId: profile.id,
+              });
+            }
           }
           return done(null, user);
         } catch (err) {
@@ -53,24 +61,31 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-// GITHUB
+// ----------------------------
+// GITHUB STRATEGY
 if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   passport.use(
     new GitHubStrategy(
       {
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: process.env.GITHUB_CALLBACK_URL,
+        callbackURL: `${BASE_URL}/auth/github/callback`,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
           let user = await User.findOne({ githubId: profile.id });
           if (!user) {
-            user = await User.create({
-              name: profile.displayName || profile.username,
-              email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
-              githubId: profile.id,
-            });
+            user = await User.findOne({ email: profile.emails?.[0]?.value || `${profile.username}@github.com` });
+            if (user) {
+              user.githubId = profile.id;
+              await user.save();
+            } else {
+              user = await User.create({
+                name: profile.displayName || profile.username,
+                email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
+                githubId: profile.id,
+              });
+            }
           }
           return done(null, user);
         } catch (err) {
@@ -81,9 +96,8 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   );
 }
 
-/* -------------------------------
-   🔹 SESSION
---------------------------------*/
+// ----------------------------
+// SESSION
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
@@ -94,63 +108,56 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-/* -------------------------------
-   🔹 ROTAS SOCIAIS
---------------------------------*/
+// ----------------------------
+// ROTAS LOGIN SOCIAL
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login" }),
+  passport.authenticate("google", { failureRedirect: "/auth/login" }),
   async (req, res) => {
+    if (!req.user) return res.redirect("/auth/login");
     if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
     req.session.tempUserId = req.user._id;
-    req.logout(() => res.redirect("/auth/mfa-verify"));
+    res.redirect("/auth/mfa-verify");
   }
 );
 
 router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
 router.get(
   "/github/callback",
-  passport.authenticate("github", { failureRedirect: "/login" }),
+  passport.authenticate("github", { failureRedirect: "/auth/login" }),
   async (req, res) => {
+    if (!req.user) return res.redirect("/auth/login");
     if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
     req.session.tempUserId = req.user._id;
-    req.logout(() => res.redirect("/auth/mfa-verify"));
+    req.logout(err => {
+      if (err) console.error(err);
+      res.redirect("/auth/mfa-verify");
+    });
   }
 );
 
-/* -------------------------------
-   🔹 LOGIN NORMAL
---------------------------------*/
-router.get("/login", (req, res) => {
-  res.render("login", {
-    error: null,
-    message: null,
-    email: "",
-    user: req.user,
-    theme: req.cookies.theme || "light"
-  });
-});
+// ----------------------------
+// LOGIN NORMAL
+router.get("/login", (req, res) =>
+  res.render("login", { error: null, message: null, email: "", user: req.user, theme: req.cookies.theme || "light" })
+);
 
-router.post("/login", async (req, res, next) => {
+// POST login normal + MFA (mantém igual)
+router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
     if (!user) return res.render("login", { error: "Usuário não encontrado.", email, user: null, theme: req.cookies.theme || "light" });
-
     if (!user.password) return res.render("login", { error: "Esta conta permite apenas login social.", email, user: null, theme: req.cookies.theme || "light" });
-
-    const passwordOK = await bcrypt.compare(password, user.password);
-    if (!passwordOK) return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
-
+    const passwordOk = await bcrypt.compare(password, user.password);
+    if (!passwordOk) return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
     if (user.mfaEnabled) {
       req.session.tempUserId = user._id;
       return res.redirect("/auth/mfa-verify");
     }
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      if (!user.mfaEnabled) return res.redirect("/auth/mfa/setup");
+    req.login(user, err => {
+      if (err) console.error(err);
       res.redirect("/");
     });
   } catch (err) {
@@ -159,135 +166,12 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-/* -------------------------------
-   🔹 MFA
---------------------------------*/
-router.get("/mfa-verify", (req, res) => {
-  if (!req.session.tempUserId) return res.redirect("/login");
-  res.render("mfa-verify", { error: null, theme: req.cookies.theme || "light" });
-});
-
-router.post("/mfa/login", async (req, res) => {
-  const { token } = req.body;
-  if (!req.session.tempUserId) return res.redirect("/login");
-
-  const user = await User.findById(req.session.tempUserId);
-  if (!user?.mfaEnabled) return res.render("mfa-verify", { error: "MFA não configurado.", theme: req.cookies.theme || "light" });
-
-  const verified = speakeasy.totp.verify({ secret: user.mfaSecret, encoding: "base32", token });
-  if (!verified) return res.render("mfa-verify", { error: "Código MFA inválido.", theme: req.cookies.theme || "light" });
-
-  req.login(user, (err) => {
-    if (err) return res.render("mfa-verify", { error: "Erro ao autenticar.", theme: req.cookies.theme || "light" });
-    delete req.session.tempUserId;
-    res.redirect("/");
-  });
-});
-
-router.get("/mfa/setup", requireLogin, async (req, res) => {
-  try {
-    const secret = speakeasy.generateSecret({ name: "SeuSite - MFA" });
-    const qrCodeImageUrl = await QRCode.toDataURL(secret.otpauth_url);
-    req.session.tempMfaSecret = secret.base32;
-    res.render("mfa-setup", { qrCode: qrCodeImageUrl, error: null, theme: req.cookies.theme || "light" });
-  } catch {
-    res.status(500).render("mfa-setup", { qrCode: null, error: "Erro ao gerar MFA", theme: req.cookies.theme || "light" });
-  }
-});
-
-router.post("/mfa/verify", requireLogin, async (req, res) => {
-  const { token } = req.body;
-  const verified = speakeasy.totp.verify({ secret: req.session.tempMfaSecret, encoding: "base32", token });
-
-  if (!verified) return res.render("mfa-setup", { qrCode: null, error: "Código inválido", theme: req.cookies.theme || "light" });
-
-  const user = await User.findById(req.user.id);
-  user.mfaEnabled = true;
-  user.mfaSecret = req.session.tempMfaSecret;
-  await user.save();
-  delete req.session.tempMfaSecret;
-
-  res.redirect("/");
-});
-
-/* -------------------------------
-   🔹 ESQUECEU SENHA / RESET
---------------------------------*/
-// GET formulário
-router.get("/forgot-password", (req, res) => {
-  res.render("auth/forgot-password", { error: null, message: null, theme: req.cookies.theme || "light" });
-});
-
-// POST enviar link
-router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.json({ success: false, message: "E-mail não encontrado." });
-
-    const token = crypto.randomBytes(32).toString("hex");
-    user.resetToken = token;
-    user.resetTokenExpires = Date.now() + 3600000; // 1 hora
-    await user.save();
-
-    const transporter = nodemailer.createTransport({
-      service: "Gmail",
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-    });
-
-    const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password/${token}`;
-    console.log("Reset URL:", resetUrl); // para depuração
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Redefinição de senha",
-      html: `<p>Clique no link abaixo para redefinir sua senha:</p><a href="${resetUrl}">${resetUrl}</a>`
-    });
-
-    res.json({ success: true, message: "E-mail enviado! Verifique sua caixa de entrada." });
-  } catch (err) {
-    console.error(err);
-    res.json({ success: false, message: "Erro ao processar pedido." });
-  }
-});
-
-// GET reset password
-router.get("/reset-password/:token", async (req, res) => {
-  const { token } = req.params;
-  const user = await User.findOne({ resetToken: token, resetTokenExpires: { $gt: Date.now() } });
-  if (!user) return res.render("reset-password", { error: "Token inválido ou expirado.", token: null, theme: req.cookies.theme || "light" });
-  res.render("reset-password", { token, theme: req.cookies.theme || "light" });
-});
-
-// POST salvar nova senha
-router.post("/reset-password/:token", async (req, res) => {
-  const { token } = req.params;
-  const { password, confirmPassword } = req.body;
-
-  if (password !== confirmPassword) return res.render("reset-password", { error: "As senhas não coincidem.", token, theme: req.cookies.theme || "light" });
-
-  const user = await User.findOne({ resetToken: token, resetTokenExpires: { $gt: Date.now() } });
-  if (!user) return res.render("reset-password", { error: "Token inválido ou expirado.", token: null, theme: req.cookies.theme || "light" });
-
-  user.password = await bcrypt.hash(password, 10);
-  user.resetToken = undefined;
-  user.resetTokenExpires = undefined;
-  await user.save();
-
-  res.render("login", { message: "Senha redefinida com sucesso!", error: null, email: user.email, user: null, theme: req.cookies.theme || "light" });
-});
-
-/* -------------------------------
-   🔹 LOGOUT
---------------------------------*/
-router.get("/logout", (req, res, next) => {
-  req.logout((err) => {
-    if (err) return next(err);
-    req.session.destroy(() => {
-      res.clearCookie("connect.sid");
-      res.redirect("/");
-    });
+// ----------------------------
+// LOGOUT
+router.get("/logout", (req, res) => {
+  req.logout(err => {
+    if (err) console.error(err);
+    req.session.destroy(() => res.clearCookie("connect.sid") && res.redirect("/auth/login"));
   });
 });
 

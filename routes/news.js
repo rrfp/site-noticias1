@@ -1,70 +1,48 @@
+// routes/news.js
 import express from "express";
-import News from "../models/News.js";
-import { requireLogin } from "./auth.js"; // seu middleware de autenticação
+import { requireLogin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Listar todas notícias
-router.get("/", async (req, res) => {
-  try {
-    const newsList = await News.find().sort({ createdAt: -1 });
-    res.render("news", {
-      newsList,
-      user: req.user,
-      theme: req.cookies.theme || "light"
-    });
-  } catch (err) {
-    res.status(500).send("Erro ao buscar notícias");
-  }
+// Exemplo de armazenamento temporário (substitua pelo MongoDB depois)
+let newsLikes = {};   // { newsId: quantidade }
+let newsComments = {}; // { newsId: [{ user, comment }] }
+
+/**
+ * Curtir notícia
+ * POST /api/news/like
+ * Body: { newsId }
+ */
+router.post("/like", requireLogin, (req, res) => {
+  const { newsId } = req.body;
+  if (!newsId) return res.status(400).json({ success: false, message: "ID da notícia é obrigatório" });
+
+  newsLikes[newsId] = (newsLikes[newsId] || 0) + 1;
+  res.json({ success: true, likes: newsLikes[newsId] });
 });
 
-// Curtir / descurtir notícia
-router.post("/:id/like", requireLogin, async (req, res) => {
-  try {
-    const news = await News.findById(req.params.id);
-    if (!news) return res.status(404).json({ error: "Notícia não encontrada" });
+/**
+ * Comentar notícia
+ * POST /api/news/comment
+ * Body: { newsId, comment }
+ */
+router.post("/comment", requireLogin, (req, res) => {
+  const { newsId, comment } = req.body;
+  if (!newsId || !comment) return res.status(400).json({ success: false, message: "ID e comentário são obrigatórios" });
 
-    const userId = req.user._id;
+  newsComments[newsId] = newsComments[newsId] || [];
+  newsComments[newsId].push({ user: req.user.name, comment, date: new Date() });
 
-    if (!news.likes) news.likes = [];
-    if (news.likes.includes(userId)) {
-      news.likes.pull(userId); // descurtir
-    } else {
-      news.likes.push(userId); // curtir
-    }
-
-    await news.save();
-    res.json({ likesCount: news.likes.length });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao curtir notícia" });
-  }
+  res.json({ success: true, comments: newsComments[newsId] });
 });
 
-// Adicionar comentário
-router.post("/:id/comment", requireLogin, async (req, res) => {
-  try {
-    const news = await News.findById(req.params.id);
-    if (!news) return res.status(404).json({ error: "Notícia não encontrada" });
-
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ error: "Comentário vazio" });
-
-    if (!news.comments) news.comments = [];
-    const comment = {
-      userId: req.user._id,
-      username: req.user.name,
-      text,
-      createdAt: new Date()
-    };
-    news.comments.push(comment);
-
-    await news.save();
-    res.json({ comment });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao adicionar comentário" });
-  }
+/**
+ * Obter comentários de uma notícia
+ * GET /api/news/comments/:newsId
+ */
+router.get("/comments/:newsId", requireLogin, (req, res) => {
+  const { newsId } = req.params;
+  res.json({ comments: newsComments[newsId] || [] });
 });
 
 export default router;
