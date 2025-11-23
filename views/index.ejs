@@ -17,28 +17,23 @@
       align-items: center;
     }
 
-    /* ===== Container principal ===== */
-    .site-wrap {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 12px;
-      width: 95%;
-      max-width: 1200px;
-      padding: 20px 25px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ===== Topbar ===== */
+    /* ===== Topbar fixa ===== */
     .topbar {
+      width: 100%;
+      height: 80px;
+      background-color: #111;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 25px;
-      gap: 10px;
+      padding: 0 30px;
+      box-sizing: border-box;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      color: #fff;
     }
+
     .topbar__brand {
       display: flex;
       align-items: center;
@@ -52,20 +47,15 @@
     }
     .brand {
       font-size: 28px;
-      color: #007bff;
-      margin: 0;
       font-weight: bold;
+      color: #007bff;
     }
     .topbar__user {
       display: flex;
       align-items: center;
       gap: 15px;
-      flex-wrap: wrap;
     }
-    .welcome {
-      font-weight: 600;
-      color: #333;
-    }
+    .welcome { font-weight: 600; }
     .btn-logout {
       background: #db4437;
       color: #fff;
@@ -80,18 +70,36 @@
       transform: translateY(-2px);
     }
 
-    /* ===== Barra de pesquisa ===== */
+    /* ===== Container principal ===== */
+    .site-wrap {
+      margin-top: 100px; /* espaço para topbar fixa */
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      width: 95%;
+      max-width: 1200px;
+      padding: 20px 25px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Barra de Pesquisa ===== */
+    .search-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
     #search-bar {
       width: 100%;
-      max-width: 400px;
-      padding: 10px 15px;
+      max-width: 500px;
+      padding: 12px 15px;
       border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 15px;
       outline: none;
-      margin-top: 10px;
-      background: #fff;
-      color: #000;
+      transition: 0.2s;
     }
     #search-bar:focus {
       border-color: #007bff;
@@ -126,101 +134,27 @@
       transition: transform 0.3s;
     }
     .card__media img:hover { transform: scale(1.05); }
-    .card__content {
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .card__title a {
-      text-decoration: none;
-      color: #007bff;
-      font-weight: bold;
-      font-size: 16px;
-    }
-    .card__desc {
-      color: #555;
-      font-size: 14px;
-    }
-    .card__meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-    }
-    .badge {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: #555;
-    }
-    .badge__dot {
-      width: 6px;
-      height: 6px;
-      background: #007bff;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .card__read {
-      color: #007bff;
-      text-decoration: none;
-      font-weight: bold;
-    }
+    .card__content { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+    .card__title a { text-decoration: none; color: #007bff; font-weight: bold; font-size: 16px; }
+    .card__desc { color: #555; font-size: 14px; }
+    .card__meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+    .badge { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #555; }
+    .badge__dot { width: 6px; height: 6px; background: #007bff; border-radius: 50%; display: inline-block; }
+    .card__read { color: #007bff; text-decoration: none; font-weight: bold; }
     .card__read:hover { text-decoration: underline; }
 
-    /* ===== Paginação responsiva ===== */
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      margin: 20px 0;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      padding: 5px 0;
-    }
-    .pagination::-webkit-scrollbar { height: 6px; }
-    .pagination::-webkit-scrollbar-thumb {
-      background-color: #007bff;
-      border-radius: 3px;
-    }
-    .pagination button {
-      flex: 0 0 auto;
-      padding: 6px 14px;
-      border: none;
-      background: #007bff;
-      color: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.2s;
-    }
+    /* ===== Paginação ===== */
+    .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 20px 0; flex-wrap: nowrap; overflow-x: auto; padding: 5px 0; }
+    .pagination button { flex: 0 0 auto; padding: 6px 14px; border: none; background: #007bff; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
     .pagination button:hover { opacity: 0.9; transform: translateY(-1px); }
-    .pagination button.active {
-      background: #0056b3;
-      transform: scale(1.2);
-      font-weight: bold;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
+    .pagination button.active { background: #0056b3; transform: scale(1.2); font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 
     /* ===== Mensagens ===== */
-    .loading, .empty {
-      text-align: center;
-      font-size: 16px;
-      padding: 30px 0;
-      color: #555;
-    }
+    .loading, .empty { text-align: center; font-size: 16px; padding: 30px 0; color: #555; }
     .empty__icon { font-size: 40px; margin-bottom: 10px; }
 
     /* ===== Rodapé ===== */
-    .footer {
-      text-align: center;
-      font-size: 12px;
-      color: #444;
-      margin-top: 20px;
-      padding-bottom: 10px;
-    }
+    .footer { text-align: center; font-size: 12px; color: #444; margin-top: 20px; padding-bottom: 10px; }
 
     @media (max-width: 768px) {
       .topbar__brand { flex-basis: 100%; justify-content: center; margin-bottom: 15px; }
@@ -229,27 +163,51 @@
     }
   </style>
 </head>
+
 <body class="news-page">
-  <div class="site-wrap">
-    <!-- ===== Topbar ===== -->
-    <header class="topbar">
-      <div class="topbar__brand">
-        <span class="brand-dot"></span>
-        <h1 class="brand">Portal de Notícias</h1>
-      </div>
+  <!-- ===== Topbar ===== -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="brand-dot"></span>
+      <h1 class="brand">Portal de Notícias</h1>
+    </div>
+    <div class="topbar__user">
+      <% if(user) { %>
+        <p class="welcome">Bem-vindo, <%= user.email %>!</p>
+        <a href="/logout" class="btn-logout">Sair</a>
+      <% } else { %>
+        <a href="/login" class="btn-logout">Login</a>
+      <% } %>
+    </div>
+  </header>
 
-      <!-- Barra de pesquisa -->
+  <!-- ===== Container principal ===== -->
+  <div class="site-wrap" style="margin-top: 100px;">
+    <!-- ===== Barra de Pesquisa ===== -->
+    <div class="search-container">
       <input type="text" id="search-bar" placeholder="Pesquisar notícias...">
+    </div>
 
-      <div class="topbar__user">
-        <% if(user) { %>
-          <p class="welcome">Bem-vindo, <%= user.email %>!</p>
-          <a href="/logout" class="btn-logout">Sair</a>
-        <% } else { %>
-          <a href="/login" class="btn-logout">Login</a>
-        <% } %>
-      </div>
-    </header>
+    <!-- ===== Notícias ===== -->
+    <main class="container" id="news-container">
+      <div class="loading">Carregando notícias...</div>
+    </main>
+
+    <!-- ===== Paginação ===== -->
+    <div class="pagination" id="pagination"></div>
+
+    <!-- ===== Rodapé ===== -->
+    <footer class="footer">
+      <small>© <span id="year"></span> · Dashboard de Notícias</small>
+    </footer>
+  </div>
+</body>
+
+
+    <!-- ===== Barra de Pesquisa ===== -->
+    <div class="search-container">
+      <input type="text" id="search-bar" placeholder="Pesquisar notícias...">
+    </div>
 
     <!-- ===== Notícias ===== -->
     <main class="container" id="news-container">
@@ -265,13 +223,15 @@
     </footer>
   </div>
 
-  <!-- ===== Scripts ===== -->
   <script>
     document.getElementById("year").innerText = new Date().getFullYear();
 
     const ITEMS_PER_PAGE = 20;
     let currentPage = 1;
     let newsData = [];
+    let filteredData = [];
+
+    const searchBar = document.getElementById("search-bar");
 
     async function loadNews() {
       const container = document.getElementById('news-container');
@@ -280,6 +240,7 @@
       try {
         const res = await fetch('/api/news');
         newsData = await res.json();
+        filteredData = newsData;
 
         if (!newsData || newsData.length === 0) {
           container.innerHTML = `<div class="empty"><div class="empty__icon">📰</div><p>Não foi possível carregar notícias externas.</p></div>`;
@@ -300,7 +261,7 @@
 
       const start = (page - 1) * ITEMS_PER_PAGE;
       const end = start + ITEMS_PER_PAGE;
-      const pageItems = newsData.slice(start, end);
+      const pageItems = filteredData.slice(start, end);
 
       const section = document.createElement('section');
       section.className = 'news-grid';
@@ -328,7 +289,7 @@
     function renderPagination() {
       const pagination = document.getElementById('pagination');
       pagination.innerHTML = '';
-      const totalPages = Math.ceil(newsData.length / ITEMS_PER_PAGE);
+      const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
 
       const prevBtn = document.createElement('button');
       prevBtn.innerText = '← Anterior';
@@ -370,96 +331,14 @@
       pagination.appendChild(nextBtn);
     }
 
-    // ===== Função de pesquisa =====
-    const searchBar = document.getElementById('search-bar');
-    searchBar.addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      const filtered = newsData.filter(n => 
-        (n.title && n.title.toLowerCase().includes(query)) ||
-        (n.description && n.description.toLowerCase().includes(query))
-      );
+    // ===== Pesquisa =====
+    searchBar.addEventListener("input", () => {
+      const query = searchBar.value.toLowerCase();
+      filteredData = newsData.filter(n => n.title.toLowerCase().includes(query) || (n.description && n.description.toLowerCase().includes(query)));
       currentPage = 1;
-      newsDataFiltered = filtered;
-      renderFiltered(filtered);
-      renderPaginationFiltered(filtered);
+      renderPage(currentPage);
+      renderPagination();
     });
-
-    function renderFiltered(filtered) {
-      const container = document.getElementById('news-container');
-      container.innerHTML = '';
-
-      const section = document.createElement('section');
-      section.className = 'news-grid';
-
-      filtered.forEach((n, idx) => {
-        const article = document.createElement('article');
-        article.className = `card ${idx === 0 && currentPage === 1 ? 'card--featured' : ''}`;
-        article.innerHTML = `
-          ${n.urlToImage ? `<a href="${n.url}" target="_blank" rel="noopener" class="card__media"><img src="${n.urlToImage}" alt="Imagem da notícia" loading="lazy"></a>` : ''}
-          <div class="card__content">
-            <h3 class="card__title"><a href="${n.url}" target="_blank" rel="noopener">${n.title}</a></h3>
-            ${n.description ? `<p class="card__desc">${n.description}</p>` : ''}
-            <div class="card__meta">
-              ${n.source ? `<span class="badge"><span class="badge__dot"></span>Fonte: ${n.source}</span>` : ''}
-              <a href="${n.url}" target="_blank" rel="noopener" class="card__read">Ler matéria →</a>
-            </div>
-          </div>
-        `;
-        section.appendChild(article);
-      });
-
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty"><div class="empty__icon">🔍</div><p>Nenhuma notícia encontrada.</p></div>`;
-      } else {
-        container.appendChild(section);
-      }
-    }
-
-    function renderPaginationFiltered(filtered) {
-      const pagination = document.getElementById('pagination');
-      pagination.innerHTML = '';
-      const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-      if (totalPages <= 1) return;
-
-      const prevBtn = document.createElement('button');
-      prevBtn.innerText = '← Anterior';
-      prevBtn.disabled = currentPage === 1;
-      prevBtn.addEventListener('click', () => {
-        if (currentPage > 1) {
-          currentPage--;
-          renderFiltered(filtered);
-          renderPaginationFiltered(filtered);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      });
-      pagination.appendChild(prevBtn);
-
-      for (let i = 1; i <= totalPages; i++) {
-        const btn = document.createElement('button');
-        btn.innerText = i;
-        btn.className = i === currentPage ? 'active' : '';
-        btn.addEventListener('click', () => {
-          currentPage = i;
-          renderFiltered(filtered);
-          renderPaginationFiltered(filtered);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-        pagination.appendChild(btn);
-      }
-
-      const nextBtn = document.createElement('button');
-      nextBtn.innerText = 'Próximo →';
-      nextBtn.disabled = currentPage === totalPages;
-      nextBtn.addEventListener('click', () => {
-        if (currentPage < totalPages) {
-          currentPage++;
-          renderFiltered(filtered);
-          renderPaginationFiltered(filtered);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      });
-      pagination.appendChild(nextBtn);
-    }
 
     loadNews();
   </script>
