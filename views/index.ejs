@@ -36,7 +36,8 @@
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 15px;
+      margin-bottom: 25px;
+      gap: 10px;
     }
     .topbar__brand {
       display: flex;
@@ -79,33 +80,22 @@
       transform: translateY(-2px);
     }
 
-    /* ===== Faixa de pesquisa branca ===== */
-    .search-bar-wrapper {
+    /* ===== Barra de pesquisa ===== */
+    #search-bar {
       width: 100%;
-      background: #fff;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 25px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: center;
-    }
-    .search-bar input {
-      width: 60%;
-      max-width: 500px;
-      padding: 12px 15px;
+      max-width: 400px;
+      padding: 10px 15px;
       border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 15px;
       outline: none;
-      transition: all 0.2s;
+      margin-top: 10px;
+      background: #fff;
+      color: #000;
     }
-    .search-bar input:focus {
+    #search-bar:focus {
       border-color: #007bff;
       box-shadow: 0 0 6px rgba(0,123,255,0.3);
-    }
-    @media (max-width: 768px) {
-      .search-bar input { width: 80%; }
     }
 
     /* ===== Grid de notícias ===== */
@@ -232,7 +222,6 @@
       padding-bottom: 10px;
     }
 
-    /* ===== Responsividade ===== */
     @media (max-width: 768px) {
       .topbar__brand { flex-basis: 100%; justify-content: center; margin-bottom: 15px; }
       .topbar__user { flex-basis: 100%; justify-content: center; gap: 10px; margin-bottom: 10px; }
@@ -248,6 +237,10 @@
         <span class="brand-dot"></span>
         <h1 class="brand">Portal de Notícias</h1>
       </div>
+
+      <!-- Barra de pesquisa -->
+      <input type="text" id="search-bar" placeholder="Pesquisar notícias...">
+
       <div class="topbar__user">
         <% if(user) { %>
           <p class="welcome">Bem-vindo, <%= user.email %>!</p>
@@ -257,13 +250,6 @@
         <% } %>
       </div>
     </header>
-
-    <!-- ===== Faixa de pesquisa ===== -->
-    <div class="search-bar-wrapper">
-      <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="Pesquise notícias sobre seu interesse...">
-      </div>
-    </div>
 
     <!-- ===== Notícias ===== -->
     <main class="container" id="news-container">
@@ -286,7 +272,6 @@
     const ITEMS_PER_PAGE = 20;
     let currentPage = 1;
     let newsData = [];
-    let filteredData = [];
 
     async function loadNews() {
       const container = document.getElementById('news-container');
@@ -295,7 +280,7 @@
       try {
         const res = await fetch('/api/news');
         newsData = await res.json();
-        filteredData = newsData; // Inicialmente mostrar todas
+
         if (!newsData || newsData.length === 0) {
           container.innerHTML = `<div class="empty"><div class="empty__icon">📰</div><p>Não foi possível carregar notícias externas.</p></div>`;
           return;
@@ -315,7 +300,7 @@
 
       const start = (page - 1) * ITEMS_PER_PAGE;
       const end = start + ITEMS_PER_PAGE;
-      const pageItems = filteredData.slice(start, end);
+      const pageItems = newsData.slice(start, end);
 
       const section = document.createElement('section');
       section.className = 'news-grid';
@@ -343,7 +328,7 @@
     function renderPagination() {
       const pagination = document.getElementById('pagination');
       pagination.innerHTML = '';
-      const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+      const totalPages = Math.ceil(newsData.length / ITEMS_PER_PAGE);
 
       const prevBtn = document.createElement('button');
       prevBtn.innerText = '← Anterior';
@@ -385,18 +370,96 @@
       pagination.appendChild(nextBtn);
     }
 
-    // ===== Pesquisa =====
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', () => {
-      const query = searchInput.value.toLowerCase();
-      filteredData = newsData.filter(n => 
+    // ===== Função de pesquisa =====
+    const searchBar = document.getElementById('search-bar');
+    searchBar.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const filtered = newsData.filter(n => 
         (n.title && n.title.toLowerCase().includes(query)) ||
         (n.description && n.description.toLowerCase().includes(query))
       );
       currentPage = 1;
-      renderPage(currentPage);
-      renderPagination();
+      newsDataFiltered = filtered;
+      renderFiltered(filtered);
+      renderPaginationFiltered(filtered);
     });
+
+    function renderFiltered(filtered) {
+      const container = document.getElementById('news-container');
+      container.innerHTML = '';
+
+      const section = document.createElement('section');
+      section.className = 'news-grid';
+
+      filtered.forEach((n, idx) => {
+        const article = document.createElement('article');
+        article.className = `card ${idx === 0 && currentPage === 1 ? 'card--featured' : ''}`;
+        article.innerHTML = `
+          ${n.urlToImage ? `<a href="${n.url}" target="_blank" rel="noopener" class="card__media"><img src="${n.urlToImage}" alt="Imagem da notícia" loading="lazy"></a>` : ''}
+          <div class="card__content">
+            <h3 class="card__title"><a href="${n.url}" target="_blank" rel="noopener">${n.title}</a></h3>
+            ${n.description ? `<p class="card__desc">${n.description}</p>` : ''}
+            <div class="card__meta">
+              ${n.source ? `<span class="badge"><span class="badge__dot"></span>Fonte: ${n.source}</span>` : ''}
+              <a href="${n.url}" target="_blank" rel="noopener" class="card__read">Ler matéria →</a>
+            </div>
+          </div>
+        `;
+        section.appendChild(article);
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty"><div class="empty__icon">🔍</div><p>Nenhuma notícia encontrada.</p></div>`;
+      } else {
+        container.appendChild(section);
+      }
+    }
+
+    function renderPaginationFiltered(filtered) {
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = '';
+      const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+      if (totalPages <= 1) return;
+
+      const prevBtn = document.createElement('button');
+      prevBtn.innerText = '← Anterior';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderFiltered(filtered);
+          renderPaginationFiltered(filtered);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+      pagination.appendChild(prevBtn);
+
+      for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.innerText = i;
+        btn.className = i === currentPage ? 'active' : '';
+        btn.addEventListener('click', () => {
+          currentPage = i;
+          renderFiltered(filtered);
+          renderPaginationFiltered(filtered);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        pagination.appendChild(btn);
+      }
+
+      const nextBtn = document.createElement('button');
+      nextBtn.innerText = 'Próximo →';
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderFiltered(filtered);
+          renderPaginationFiltered(filtered);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+      pagination.appendChild(nextBtn);
+    }
 
     loadNews();
   </script>
