@@ -28,15 +28,17 @@ const app = express();
 // ----------------------------
 const IS_DEPLOY = !!process.env.PORT;
 const PORT = process.env.PORT || process.env.LOCAL_PORT || 3000;
-const MONGO_URI = IS_DEPLOY ? process.env.DEPLOY_MONGO_URI : process.env.LOCAL_MONGO_URI;
-const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : `${process.env.LOCAL_BASE_URL}:${PORT}`;
 
-// URL para logs (corrige duplicidade da porta)
-const LOG_URL = IS_DEPLOY ? BASE_URL : `${BASE_URL}:${PORT}`;
+// BASE_URL já inclui a porta no localhost
+const BASE_URL = IS_DEPLOY
+  ? process.env.DEPLOY_BASE_URL
+  : `${process.env.LOCAL_BASE_URL}:${PORT}`;
 
 // ----------------------------
 // MONGODB
 // ----------------------------
+const MONGO_URI = IS_DEPLOY ? process.env.DEPLOY_MONGO_URI : process.env.LOCAL_MONGO_URI;
+
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB conectado ✅"))
@@ -152,4 +154,4 @@ app.get("/logout", (req, res) => res.redirect("/auth/logout"));
 // ----------------------------
 // SERVIDOR
 // ----------------------------
-app.listen(PORT, () => console.log(`Servidor rodando em ${LOG_URL}`));
+app.listen(PORT, () => console.log(`Servidor rodando em ${BASE_URL}`));
