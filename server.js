@@ -84,13 +84,9 @@ app.use(express.static(path.join(__dirname, "public")));
 /* --------------------------------------
    🔐 ROTAS DE AUTENTICAÇÃO
 -------------------------------------- */
-// redireciona /forgot-password para /auth/forgot-password
-app.get("/forgot-password", (req, res) => {
-  res.redirect("/auth/forgot-password");
-});
-
 app.use("/auth", authRoutes);
 app.use("/news", newsRoutes);
+
 
 /* --------------------------------------
    🎨 THEME GLOBAL

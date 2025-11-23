@@ -215,11 +215,11 @@ router.post("/mfa/verify", requireLogin, async (req, res) => {
 --------------------------------*/
 // GET formulário
 router.get("/forgot-password", (req, res) => {
-  res.render("/auth/forgot-password", { error: null, message: null, theme: req.cookies.theme || "light" });
+  res.render("auth/forgot-password", { error: null, message: null, theme: req.cookies.theme || "light" });
 });
 
 // POST enviar link
-router.post("/auth/forgot-password", async (req, res) => {
+router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email });
@@ -236,7 +236,6 @@ router.post("/auth/forgot-password", async (req, res) => {
     });
 
     const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password/${token}`;
-
     console.log("Reset URL:", resetUrl); // para depuração
 
     await transporter.sendMail({
