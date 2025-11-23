@@ -15,10 +15,9 @@ import nodemailer from "nodemailer";
 const router = express.Router();
 
 // BASE_URL dinâmica (local ou produção)
-const isDeploy = process.env.NODE_ENV === "production";
-const BASE_URL = isDeploy
-  ? process.env.DEPLOY_BASE_URL
-  : process.env.LOCAL_BASE_URL;
+const IS_DEPLOY = !!process.env.PORT;
+const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : process.env.LOCAL_BASE_URL;
+
 
 /* -------------------------------
    🔹 Middleware
@@ -281,11 +280,13 @@ router.post("/mfa/verify", requireLogin, async (req, res) => {
    🔹 LOGOUT
 --------------------------------*/
 router.get("/logout", (req, res) => {
-  req.logout(err => {
-    if (err) console.error(err);
-    req.session.destroy(() => res.clearCookie("connect.sid") && res.redirect("/auth/login"));
+  req.logout();
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.redirect("/auth/login");
   });
 });
+
 
 export default router;
 export { requireLogin };
