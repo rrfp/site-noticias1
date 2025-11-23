@@ -29,7 +29,7 @@ const app = express();
 const IS_DEPLOY = !!process.env.PORT;
 const PORT = process.env.PORT || process.env.LOCAL_PORT || 3000;
 const MONGO_URI = IS_DEPLOY ? process.env.DEPLOY_MONGO_URI : process.env.LOCAL_MONGO_URI;
-const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : process.env.LOCAL_BASE_URL;
+const BASE_URL = IS_DEPLOY ? process.env.DEPLOY_BASE_URL : `${process.env.LOCAL_BASE_URL}:${PORT}`;
 
 // URL para logs (corrige duplicidade da porta)
 const LOG_URL = IS_DEPLOY ? BASE_URL : `${BASE_URL}:${PORT}`;
@@ -50,7 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS dinâmico
-app.use(cors({ origin: IS_DEPLOY ? BASE_URL : `${BASE_URL}:${PORT}`, credentials: true }));
+app.use(cors({ origin: BASE_URL, credentials: true }));
 
 // ----------------------------
 // SESSÃO
