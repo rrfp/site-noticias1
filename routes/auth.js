@@ -14,23 +14,29 @@ import nodemailer from "nodemailer";
 
 const router = express.Router();
 
+// ----------------------
 // BASE_URL dinâmica
+// ----------------------
 const IS_DEPLOY = !!process.env.PORT;
 const BASE_URL = IS_DEPLOY
   ? process.env.DEPLOY_BASE_URL
   : `${process.env.LOCAL_BASE_URL}:${process.env.LOCAL_PORT || 3000}`;
 
-/* -------------------------------
-   🔹 Middleware
---------------------------------*/
+console.log("Google OAuth BASE_URL:", BASE_URL);
+
+
+// ----------------------
+// Middleware
+// ----------------------
 function requireLogin(req, res, next) {
   if (!req.user) return res.redirect("/auth/login");
   next();
 }
 
-/* -------------------------------
-   🔹 STRATEGIES
---------------------------------*/
+// ----------------------
+// Passport Strategies
+// ----------------------
+
 // GOOGLE
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(
@@ -42,6 +48,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
+          console.log("Google profile:", profile);
           let user = await User.findOne({ googleId: profile.id });
           if (!user) {
             user = await User.findOne({ email: profile.emails[0].value });
@@ -58,6 +65,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           }
           return done(null, user);
         } catch (err) {
+          console.error("Google OAuth Error:", err);
           return done(err, null);
         }
       }
@@ -73,9 +81,11 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
         callbackURL: `${BASE_URL}/auth/github/callback`,
+        scope: ["user:email"],
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
+          console.log("GitHub profile:", profile);
           let user = await User.findOne({ githubId: profile.id });
           if (!user) {
             user = await User.findOne({
@@ -94,6 +104,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
           }
           return done(null, user);
         } catch (err) {
+          console.error("GitHub OAuth Error:", err);
           return done(err, null);
         }
       }
@@ -101,9 +112,9 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   );
 }
 
-/* -------------------------------
-   🔹 SESSION
---------------------------------*/
+// ----------------------
+// Passport session
+// ----------------------
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
@@ -114,9 +125,9 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-/* -------------------------------
-   🔹 ROTAS LOGIN SOCIAL
---------------------------------*/
+// ----------------------
+// Rotas login social
+// ----------------------
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 router.get(
   "/google/callback",
@@ -131,7 +142,7 @@ router.get(
   }
 );
 
-router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
+router.get("/github", passport.authenticate("github"));
 router.get(
   "/github/callback",
   passport.authenticate("github", { failureRedirect: "/auth/login" }),
@@ -145,9 +156,9 @@ router.get(
   }
 );
 
-/* -------------------------------
-   🔹 LOGIN NORMAL
---------------------------------*/
+// ----------------------
+// Login normal
+// ----------------------
 router.get("/login", (req, res) =>
   res.render("login", { error: null, message: null, email: "", user: req.user, theme: req.cookies.theme || "light" })
 );
@@ -165,7 +176,7 @@ router.post("/login", async (req, res) => {
       return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
     if (user.mfaEnabled) {
       req.session.tempUserId = user._id;
-      req.session.cookie.maxAge = 10 * 60 * 1000; // 10 minutos
+      req.session.cookie.maxAge = 10 * 60 * 1000;
       return res.redirect("/auth/mfa-verify");
     }
     req.login(user, err => {
@@ -178,42 +189,31 @@ router.post("/login", async (req, res) => {
   }
 });
 
-/* -------------------------------
-   🔹 REGISTRO
---------------------------------*/
+// ----------------------
+// Registro
+// ----------------------
 router.get("/register", (req, res) => {
   res.render("register", { error: null, theme: req.cookies.theme || "light" });
 });
 
 router.post("/register", async (req, res) => {
   const { name, email, password, confirmPassword } = req.body;
-
-  // Validação básica
   if (!name || !email || !password || !confirmPassword)
     return res.json({ success: false, message: "Preencha todos os campos." });
-
   if (password !== confirmPassword)
     return res.json({ success: false, message: "As senhas não conferem." });
 
   try {
-    // Verifica se o usuário já existe
     let user = await User.findOne({ email });
     if (user) return res.json({ success: false, message: "Usuário já existe." });
-
-    // Cria hash da senha
     const hash = await bcrypt.hash(password, 10);
-
-    // Cria usuário
     user = await User.create({ name, email, password: hash, mfaEnabled: false });
 
-    // Faz login temporário
     req.login(user, err => {
       if (err) {
         console.error(err);
         return res.json({ success: false, message: "Erro ao efetuar login." });
       }
-
-      // Redireciona para configuração MFA
       return res.json({ success: true, message: "Cadastro realizado com sucesso!", redirect: "/auth/mfa/setup" });
     });
   } catch (err) {
@@ -222,10 +222,9 @@ router.post("/register", async (req, res) => {
   }
 });
 
-
-/* -------------------------------
-   🔹 REDEFINIÇÃO DE SENHA
---------------------------------*/
+// ----------------------
+// Redefinição de senha
+// ----------------------
 router.get("/forgot-password", (req, res) => {
   res.render("forgot-password", { error: null, message: null, theme: req.cookies.theme || "light" });
 });
@@ -238,7 +237,7 @@ router.post("/forgot-password", async (req, res) => {
 
   const token = crypto.randomBytes(20).toString("hex");
   user.resetPasswordToken = token;
-  user.resetPasswordExpires = Date.now() + 3600000; // 1 hora
+  user.resetPasswordExpires = Date.now() + 3600000;
   await user.save();
 
   const transporter = nodemailer.createTransport({
@@ -287,9 +286,9 @@ router.post("/reset-password/:token", async (req, res) => {
   res.json({ success: true, message: "Senha alterada com sucesso!" });
 });
 
-/* -------------------------------
-   🔹 MFA
---------------------------------*/
+// ----------------------
+// MFA
+// ----------------------
 router.get("/mfa-verify", (req, res) => {
   if (!req.session.tempUserId) return res.redirect("/auth/login");
   res.render("mfa-verify", { error: null, theme: req.cookies.theme || "light" });
@@ -331,9 +330,9 @@ router.post("/mfa/verify", requireLogin, async (req, res) => {
   res.redirect("/");
 });
 
-/* -------------------------------
-   🔹 LOGOUT
---------------------------------*/
+// ----------------------
+// Logout
+// ----------------------
 router.get("/logout", (req, res, next) => {
   req.logout(function(err) {
     if (err) return next(err);
