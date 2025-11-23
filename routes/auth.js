@@ -15,7 +15,10 @@ import nodemailer from "nodemailer";
 const router = express.Router();
 
 // BASE_URL dinâmica (local ou produção)
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+const isDeploy = process.env.NODE_ENV === "production";
+const BASE_URL = isDeploy
+  ? process.env.DEPLOY_BASE_URL
+  : process.env.LOCAL_BASE_URL;
 
 /* -------------------------------
    🔹 Middleware
@@ -132,10 +135,7 @@ router.get(
     if (!req.user) return res.redirect("/auth/login");
     if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
     req.session.tempUserId = req.user._id;
-    req.logout(err => {
-      if (err) console.error(err);
-      res.redirect("/auth/mfa-verify");
-    });
+    res.redirect("/auth/mfa-verify");
   }
 );
 
@@ -253,11 +253,16 @@ router.post("/mfa/login", async (req, res) => {
   });
 });
 
+// GERA QR CODE SOMENTE NA PRIMEIRA VEZ
 router.get("/mfa/setup", requireLogin, async (req, res) => {
-  const secret = speakeasy.generateSecret({ name: "SeuSite - MFA" });
-  const qrCodeImageUrl = await QRCode.toDataURL(secret.otpauth_url);
-  req.session.tempMfaSecret = secret.base32;
-  res.render("mfa-setup", { qrCode: qrCodeImageUrl, error: null, theme: req.cookies.theme || "light" });
+  if (!req.user.mfaEnabled) {
+    const secret = speakeasy.generateSecret({ name: "SeuSite - MFA" });
+    const qrCodeImageUrl = await QRCode.toDataURL(secret.otpauth_url);
+    req.session.tempMfaSecret = secret.base32;
+    return res.render("mfa-setup", { qrCode: qrCodeImageUrl, error: null, theme: req.cookies.theme || "light" });
+  } 
+  // Usuário já configurou MFA
+  res.redirect("/");
 });
 
 router.post("/mfa/verify", requireLogin, async (req, res) => {
