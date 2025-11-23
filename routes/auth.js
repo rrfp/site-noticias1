@@ -14,17 +14,17 @@ import nodemailer from "nodemailer";
 
 const router = express.Router();
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 Middleware
----------------------------------------------------- */
+--------------------------------*/
 function requireLogin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: "Não autenticado" });
   next();
 }
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 STRATEGIES
----------------------------------------------------- */
+--------------------------------*/
 // GOOGLE
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(
@@ -81,9 +81,9 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   );
 }
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 SESSION
----------------------------------------------------- */
+--------------------------------*/
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
@@ -94,9 +94,9 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 ROTAS SOCIAIS
----------------------------------------------------- */
+--------------------------------*/
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 router.get(
   "/google/callback",
@@ -119,9 +119,9 @@ router.get(
   }
 );
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 LOGIN NORMAL
----------------------------------------------------- */
+--------------------------------*/
 router.get("/login", (req, res) => {
   res.render("login", {
     error: null,
@@ -148,7 +148,6 @@ router.post("/login", async (req, res, next) => {
       return res.redirect("/auth/mfa-verify");
     }
 
-    // Primeiro login → setup MFA
     req.login(user, (err) => {
       if (err) return next(err);
       if (!user.mfaEnabled) return res.redirect("/auth/mfa/setup");
@@ -160,9 +159,9 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 MFA
----------------------------------------------------- */
+--------------------------------*/
 router.get("/mfa-verify", (req, res) => {
   if (!req.session.tempUserId) return res.redirect("/login");
   res.render("mfa-verify", { error: null, theme: req.cookies.theme || "light" });
@@ -211,19 +210,17 @@ router.post("/mfa/verify", requireLogin, async (req, res) => {
   res.redirect("/");
 });
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 ESQUECEU SENHA / RESET
----------------------------------------------------- */
-// Formulário de solicitação
+--------------------------------*/
+// GET formulário
 router.get("/forgot-password", (req, res) => {
-  res.render("forgot-password", { error: null, message: null, theme: req.cookies.theme || "light" });
+  res.render("/auth/forgot-password", { error: null, message: null, theme: req.cookies.theme || "light" });
 });
 
-// Enviar link de redefinição
-// Enviar link de redefinição (corrigido para JSON)
-router.post("/forgot-password", async (req, res) => {
+// POST enviar link
+router.post("/auth/forgot-password", async (req, res) => {
   const { email } = req.body;
-
   try {
     const user = await User.findOne({ email });
     if (!user) return res.json({ success: false, message: "E-mail não encontrado." });
@@ -233,13 +230,14 @@ router.post("/forgot-password", async (req, res) => {
     user.resetTokenExpires = Date.now() + 3600000; // 1 hora
     await user.save();
 
-    // Envio de e-mail
     const transporter = nodemailer.createTransport({
       service: "Gmail",
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
     });
 
-    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/reset-password/${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password/${token}`;
+
+    console.log("Reset URL:", resetUrl); // para depuração
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
@@ -255,8 +253,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-
-// Resetar senha via token
+// GET reset password
 router.get("/reset-password/:token", async (req, res) => {
   const { token } = req.params;
   const user = await User.findOne({ resetToken: token, resetTokenExpires: { $gt: Date.now() } });
@@ -264,6 +261,7 @@ router.get("/reset-password/:token", async (req, res) => {
   res.render("reset-password", { token, theme: req.cookies.theme || "light" });
 });
 
+// POST salvar nova senha
 router.post("/reset-password/:token", async (req, res) => {
   const { token } = req.params;
   const { password, confirmPassword } = req.body;
@@ -281,9 +279,9 @@ router.post("/reset-password/:token", async (req, res) => {
   res.render("login", { message: "Senha redefinida com sucesso!", error: null, email: user.email, user: null, theme: req.cookies.theme || "light" });
 });
 
-/* ----------------------------------------------------
+/* -------------------------------
    🔹 LOGOUT
----------------------------------------------------- */
+--------------------------------*/
 router.get("/logout", (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
