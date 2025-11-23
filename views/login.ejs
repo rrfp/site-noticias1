@@ -78,7 +78,7 @@
     button.btn-primary {
       width: 100%;
       height: 44px;
-      background: var(--brand-color, #007bff);
+      background: var(--brand-color);
       color: #fff;
       border: none;
       border-radius: 8px;
@@ -135,20 +135,13 @@
       <p class="success-msg"><%= message %></p>
     <% } %>
 
-    <!-- Formulário local -->
-<form action="/auth/login" method="POST">
-  <input 
-    type="email" 
-    name="email" 
-    placeholder="E-mail" 
-    required
-    value="<%= typeof email !== 'undefined' ? email : '' %>">
-  <input type="password" name="password" placeholder="Senha" required>
-  <div class="forgot"><a href="/forgot-password">Esqueci minha senha</a></div>
-  <button type="submit" class="btn-primary">Entrar</button>
-</form>
+    <form action="/auth/login" method="POST">
+      <input type="email" name="email" placeholder="E-mail" required value="<%= typeof email !== 'undefined' ? email : '' %>">
+      <input type="password" name="password" placeholder="Senha" required>
+      <div class="forgot"><a href="/forgot-password">Esqueci minha senha</a></div>
+      <button type="submit" class="btn-primary">Entrar</button>
+    </form>
 
-    <!-- Login social -->
     <a href="/auth/google" class="social-btn google">Entrar com Google</a>
     <a href="/auth/github" class="social-btn github">Entrar com GitHub</a>
 

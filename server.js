@@ -148,6 +148,8 @@ app.post("/set-theme", (req, res) => {
 app.get("/login", (req, res) => res.redirect("/auth/login"));
 app.get("/forgot-password", (req, res) => res.redirect("/auth/forgot-password"));
 app.get("/logout", (req, res) => res.redirect("/auth/logout"));
+app.get("/register", (req, res) => res.redirect("/auth/register"));
+
 
 // ----------------------------
 // SERVIDOR

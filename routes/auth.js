@@ -14,7 +14,7 @@ import nodemailer from "nodemailer";
 
 const router = express.Router();
 
-// BASE_URL dinâmica (local ou produção)
+// BASE_URL dinâmica
 const IS_DEPLOY = !!process.env.PORT;
 const BASE_URL = IS_DEPLOY
   ? process.env.DEPLOY_BASE_URL
@@ -123,9 +123,11 @@ router.get(
   passport.authenticate("google", { failureRedirect: "/auth/login" }),
   async (req, res) => {
     if (!req.user) return res.redirect("/auth/login");
-    if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
-    req.session.tempUserId = req.user._id;
-    res.redirect("/auth/mfa-verify");
+    if (req.user.mfaEnabled) {
+      req.session.tempUserId = req.user._id;
+      return res.redirect("/auth/mfa-verify");
+    }
+    res.redirect("/");
   }
 );
 
@@ -135,9 +137,11 @@ router.get(
   passport.authenticate("github", { failureRedirect: "/auth/login" }),
   async (req, res) => {
     if (!req.user) return res.redirect("/auth/login");
-    if (!req.user.mfaEnabled) return res.redirect("/auth/mfa/setup");
-    req.session.tempUserId = req.user._id;
-    res.redirect("/auth/mfa-verify");
+    if (req.user.mfaEnabled) {
+      req.session.tempUserId = req.user._id;
+      return res.redirect("/auth/mfa-verify");
+    }
+    res.redirect("/");
   }
 );
 
@@ -161,6 +165,7 @@ router.post("/login", async (req, res) => {
       return res.render("login", { error: "Senha incorreta.", email, user: null, theme: req.cookies.theme || "light" });
     if (user.mfaEnabled) {
       req.session.tempUserId = user._id;
+      req.session.cookie.maxAge = 10 * 60 * 1000; // 10 minutos
       return res.redirect("/auth/mfa-verify");
     }
     req.login(user, err => {
@@ -174,7 +179,7 @@ router.post("/login", async (req, res) => {
 });
 
 /* -------------------------------
-   🔹 REGISTRO (AJUSTADO PARA FETCH)
+   🔹 REGISTRO
 --------------------------------*/
 router.get("/register", (req, res) => {
   res.render("register", { error: null, theme: req.cookies.theme || "light" });
@@ -183,6 +188,7 @@ router.get("/register", (req, res) => {
 router.post("/register", async (req, res) => {
   const { name, email, password, confirmPassword } = req.body;
 
+  // Validação básica
   if (!name || !email || !password || !confirmPassword)
     return res.json({ success: false, message: "Preencha todos os campos." });
 
@@ -190,24 +196,32 @@ router.post("/register", async (req, res) => {
     return res.json({ success: false, message: "As senhas não conferem." });
 
   try {
+    // Verifica se o usuário já existe
     let user = await User.findOne({ email });
     if (user) return res.json({ success: false, message: "Usuário já existe." });
 
+    // Cria hash da senha
     const hash = await bcrypt.hash(password, 10);
-    user = await User.create({ name, email, password: hash });
 
+    // Cria usuário
+    user = await User.create({ name, email, password: hash, mfaEnabled: false });
+
+    // Faz login temporário
     req.login(user, err => {
       if (err) {
         console.error(err);
         return res.json({ success: false, message: "Erro ao efetuar login." });
       }
-      return res.json({ success: true, message: "Cadastro realizado com sucesso!" });
+
+      // Redireciona para configuração MFA
+      return res.json({ success: true, message: "Cadastro realizado com sucesso!", redirect: "/auth/mfa/setup" });
     });
   } catch (err) {
     console.error(err);
     return res.json({ success: false, message: "Erro ao criar usuário." });
   }
 });
+
 
 /* -------------------------------
    🔹 REDEFINIÇÃO DE SENHA
@@ -237,7 +251,7 @@ router.post("/forgot-password", async (req, res) => {
     to: user.email,
     from: process.env.EMAIL_USER,
     subject: "Redefinição de senha",
-    text: `Você solicitou redefinição de senha. Clique aqui: ${resetLink}`,
+    html: `<p>Você solicitou redefinição de senha. Clique <a href="${resetLink}">aqui</a> para redefinir sua senha.</p>`,
   };
 
   transporter.sendMail(mailOptions, err => {
@@ -286,7 +300,7 @@ router.post("/mfa/login", async (req, res) => {
   if (!req.session.tempUserId) return res.redirect("/auth/login");
   const user = await User.findById(req.session.tempUserId);
   if (!user?.mfaEnabled) return res.render("mfa-verify", { error: "MFA não configurado.", theme: req.cookies.theme || "light" });
-  const verified = speakeasy.totp.verify({ secret: user.mfaSecret, encoding: "base32", token });
+  const verified = speakeasy.totp.verify({ secret: user.mfaSecret, encoding: "base32", token, window: 1 });
   if (!verified) return res.render("mfa-verify", { error: "Código MFA inválido.", theme: req.cookies.theme || "light" });
   req.login(user, err => {
     if (err) console.error(err);
@@ -307,7 +321,7 @@ router.get("/mfa/setup", requireLogin, async (req, res) => {
 
 router.post("/mfa/verify", requireLogin, async (req, res) => {
   const { token } = req.body;
-  const verified = speakeasy.totp.verify({ secret: req.session.tempMfaSecret, encoding: "base32", token });
+  const verified = speakeasy.totp.verify({ secret: req.session.tempMfaSecret, encoding: "base32", token, window: 1 });
   if (!verified) return res.render("mfa-setup", { qrCode: null, error: "Código inválido", theme: req.cookies.theme || "light" });
   const user = await User.findById(req.user.id);
   user.mfaEnabled = true;
